@@ -4,7 +4,13 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "dotenv>=0.9.9",
+    "fastmcp>=3.3.1",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
+    "requests>=2.34.2",
+]
 
-[project.scripts]
-mcp = "usos:run" #TODO
+[tool.uv]
+package = true

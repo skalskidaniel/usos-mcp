@@ -1,15 +1,31 @@
-async def server(scope, receive, send):
-    """Minimal ASGI app so the package can be run with an ASGI server.
+from pathlib import Path
+from pydantic import Field, PositiveInt, field_validator, IPvAnyAddress
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from fastmcp import FastMCP
+from typing import Literal
 
-    Example: PYTHONPATH=src uvicorn usosMCP:server --reload
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
-    This keeps the implementation tiny and dependency-free. Replace with
-    a FastAPI/Starlette app or an app factory when you add real routes.
-    """
-    # Only handle HTTP connections here; other scope types can be ignored
-    if scope.get("type") != "http":
-        return
+class ServerSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=ENV_FILE, env_prefix="fast_mcp_", extra="ignore")
+    transport: Literal["stdio", "http", "sse", "streamable-http"] = Field(default="http")
+    host: str = Field(default="0.0.0.0")
+    port: PositiveInt = Field(default=8000)
 
-    # Simple response: 200 OK with plain text body
-    await send({"type": "http.response.start", "status": 200, "headers": [[b"content-type", b"text/plain; charset=utf-8"]]})
-    await send({"type": "http.response.body", "body": b"OK"})
+    @field_validator("host")
+    @classmethod
+    def validate_ip(cls, v: str) -> str:
+        return str(IPvAnyAddress(v))
+
+
+class USOSMcp:
+    def __init__(self, settings: ServerSettings | None = None) -> None:
+        self.settings = settings or ServerSettings()
+        self.mcp = FastMCP("USOS MCP server")
+
+    @property
+    def server(self):
+        return self.mcp.server
+
+    def run(self) -> None:
+        self.mcp.run(**self.settings.model_dump())

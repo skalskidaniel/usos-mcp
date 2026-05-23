@@ -1,3 +1,3 @@
-from .core import server
+from .core import USOSMcp
 
-__all__ = ["server"]
+__all__ = ["USOSMcp"]

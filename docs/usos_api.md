@@ -1,0 +1,1 @@
+It seems like current oldest api version used across polish universities is 6.5.0.0-7
