@@ -4,6 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from fastmcp import FastMCP
 from typing import Literal
 
+from usos.mcp.tools import register_auth_tools
+
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 class ServerSettings(BaseSettings):
@@ -22,6 +24,7 @@ class USOSMcp:
     def __init__(self, settings: ServerSettings | None = None) -> None:
         self.settings = settings or ServerSettings()
         self.mcp = FastMCP("USOS MCP server")
+        register_auth_tools(self.mcp)
 
     @property
     def server(self):
@@ -34,7 +37,12 @@ class USOSMcp:
             kwargs.pop("port", None)
         self.mcp.run(**kwargs)
 
+# Used for fastmcp.json
+def get_mcp() -> FastMCP:
+    return USOSMcp().mcp
 
+
+# Main entrypoint
 def main() -> None:
     app = USOSMcp()
     app.run()

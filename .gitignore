@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# USOS auth credentials
+src/usos/auth/credentials.json
