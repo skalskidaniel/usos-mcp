@@ -28,4 +28,13 @@ class USOSMcp:
         return self.mcp.server
 
     def run(self) -> None:
-        self.mcp.run(**self.settings.model_dump())
+        kwargs = self.settings.model_dump()
+        if self.settings.transport == "stdio":
+            kwargs.pop("host", None)
+            kwargs.pop("port", None)
+        self.mcp.run(**kwargs)
+
+
+def main() -> None:
+    app = USOSMcp()
+    app.run()
