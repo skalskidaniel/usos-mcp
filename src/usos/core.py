@@ -1,23 +1,7 @@
-from pathlib import Path
-from pydantic import Field, PositiveInt, field_validator, IPvAnyAddress
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from fastmcp import FastMCP
-from typing import Literal
 
-from usos.mcp.tools import register_auth_tools
-
-ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
-
-class ServerSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ENV_FILE, env_prefix="fast_mcp_", extra="ignore")
-    transport: Literal["stdio", "http", "sse", "streamable-http"] = Field(default="http")
-    host: str = Field(default="0.0.0.0")
-    port: PositiveInt = Field(default=8000)
-
-    @field_validator("host")
-    @classmethod
-    def validate_ip(cls, v: str) -> str:
-        return str(IPvAnyAddress(v))
+from usos.tools.auth import register_auth_tools
+from .models import ServerSettings
 
 
 class USOSMcp:

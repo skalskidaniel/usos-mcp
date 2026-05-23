@@ -1,0 +1,412 @@
+{
+  "AMISNS": {
+    "name_pl": "AMISNS",
+    "name_en": "AMISNS",
+    "base_url": "http://usosapps.amisns.edu.pl/"
+  },
+  "AWF_WROC": {
+    "name_pl": "AWF Wrocław",
+    "name_en": "AWF Wrocław",
+    "base_url": "http://usosapi.awf.wroc.pl/"
+  },
+  "ANSB": {
+    "name_pl": "Akademia Nauk Stosowanych Stefana Batorego",
+    "name_en": "Akademia Nauk Stosowanych Stefana Batorego",
+    "base_url": "http://apps.ansb.pl/"
+  },
+  "AWF_KRAKOW": {
+    "name_pl": "Akademia Wychowania Fizycznego im. Bronisława Czecha w Krakowie",
+    "name_en": "Akademia Wychowania Fizycznego im. Bronisława Czecha w Krakowie",
+    "base_url": "http://usosapi.awf.krakow.pl/"
+  },
+  "UCI_PB": {
+    "name_pl": "Politechnika Białostocka",
+    "name_en": "Bialystok University of Technology",
+    "base_url": "http://usos-apps.uci.pb.edu.pl/"
+  },
+  "CHAT": {
+    "name_pl": "Chrześcijańska Akademia Teologiczna w Warszawie",
+    "name_en": "Chrześcijańska Akademia Teologiczna w Warszawie",
+    "base_url": "http://usosapps.chat.edu.pl/"
+  },
+  "UJD": {
+    "name_pl": "Uniwersytet Jana Długosza w Częstochowie",
+    "name_en": "Jan Dlugosz University in Czestochowa",
+    "base_url": "http://usosapps.ujd.edu.pl/"
+  },
+  "UMLUB": {
+    "name_pl": "Uniwersytet Medyczny w Lublinie",
+    "name_en": "Medical University of Lublin",
+    "base_url": "http://usosapps.umlub.pl/"
+  },
+  "AT": {
+    "name_pl": "Akademia Teatralna w Warszawie",
+    "name_en": "National Academy of Dramatic Art in Warsaw",
+    "base_url": "http://usosapps.at.edu.pl/"
+  },
+  "PWSTE": {
+    "name_pl": "PANS w Jarosławiu",
+    "name_en": "PANS w Jarosławiu",
+    "base_url": "http://apps.pwste.edu.pl/"
+  },
+  "SGH_WAW": {
+    "name_pl": "Szkoła Główna Handlowa w Warszawie",
+    "name_en": "SGH Warsaw School of Economics",
+    "base_url": "http://usosapps.sgh.waw.pl/"
+  },
+  "ASP_KATOWICE": {
+    "name_pl": "Akaedmia Sztuk Pięknych w Katowicach",
+    "name_en": "The Academy of Fine Arts and Design in Katowice",
+    "base_url": "http://apps.asp.katowice.pl/"
+  },
+  "AMU": {
+    "name_pl": "Uniwersytet im. Adama Mickiewicza w Poznaniu",
+    "name_en": "The Adam Mickiewicz University in Poznan",
+    "base_url": "http://usosapps.amu.edu.pl/"
+  },
+  "ANS": {
+    "name_pl": "Akademia Nauk Stosowanych Angelusa Silesiusa",
+    "name_en": "The Angelus Silesius University of Applied Sciences",
+    "base_url": "http://usosapi.ans.edu.pl/"
+  },
+  "WSE": {
+    "name_pl": "Wyższa Szkoła Ekonomiczna w Białymstoku",
+    "name_en": "The Bialystok School of Economics",
+    "base_url": "http://usosapps.wse.edu.pl/"
+  },
+  "TYSZKIEWICZ": {
+    "name_pl": "Bielska Wyższa Szkoła im. J. Tyszkiewicza",
+    "name_en": "The Bielska Wyższa Szkoła im. J. Tyszkiewicza",
+    "base_url": "http://usosapi.tyszkiewicz.edu.pl/"
+  },
+  "PBS": {
+    "name_pl": "Politechnika Bydgoska im. Jana i Jędrzeja Śniadeckich",
+    "name_en": "The Bydgoszcz University of Science and Technology",
+    "base_url": "http://usosapps.pbs.edu.pl/"
+  },
+  "UKSW": {
+    "name_pl": "Uniwersytet Kardynała Stefana Wyszyńskiego",
+    "name_en": "The Cardinal Stefan Wyszynski University",
+    "base_url": "http://apps.usos.uksw.edu.pl/"
+  },
+  "APPSUSOS_UEK_KRAKOW": {
+    "name_pl": "Uniwersytet Ekonomiczny",
+    "name_en": "The Cracow University of Economic",
+    "base_url": "http://appsusos.uek.krakow.pl/"
+  },
+  "PCZ": {
+    "name_pl": "Politechnika Czestochowska",
+    "name_en": "The Czestochowa University of Technology",
+    "base_url": "http://usosapi.pcz.pl/"
+  },
+  "DSW": {
+    "name_pl": "Uniwersyet Dolnośląski DSW",
+    "name_en": "The DSW University of Lower Silesia",
+    "base_url": "http://usosapps.dsw.edu.pl/"
+  },
+  "WWW_USOSAPI_AMUZ_BYDGOSZCZ": {
+    "name_pl": "Akademia Muzyczna imienia Feliksa Nowowiejskiego w Bydgoszczy",
+    "name_en": "The Feliks Nowowiejski Academy of Music",
+    "base_url": "http://www.usosapi.amuz.bydgoszcz.pl/"
+  },
+  "APOZ": {
+    "name_pl": "Akademia Pożarnicza",
+    "name_en": "The Fire University",
+    "base_url": "http://apps.apoz.edu.pl/"
+  },
+  "UMG": {
+    "name_pl": "Uniwersytet Morski w Gdyni",
+    "name_en": "The Gdynia Maritime University",
+    "base_url": "http://usosapi.usos.umg.edu.pl/"
+  },
+  "PRAWOWROCLAW": {
+    "name_pl": "Wyższa Szkoła Prawa",
+    "name_en": "The Helena Chodkowska University of Law in Wrocław",
+    "base_url": "http://apps.prawowroclaw.edu.pl/"
+  },
+  "WSKM": {
+    "name_pl": "Wyższa Szkoła Kadr Menedżerskich",
+    "name_en": "The Higher School of Management Personnel",
+    "base_url": "http://apps.wskm.edu.pl/"
+  },
+  "ANS_GNIEZNO": {
+    "name_pl": "Akademia Nauk Stosowanych im. Hipolita Cegielskiego w Gnieźnie Uczelnia Państwowa",
+    "name_en": "The Hipolit Cegielski State University of Applied Sciences in Gniezno",
+    "base_url": "http://usosapi.ans-gniezno.edu.pl/"
+  },
+  "UJ": {
+    "name_pl": "Uniwersytet Jagielloński",
+    "name_en": "The Jagiellonian University",
+    "base_url": "http://apps.usos.uj.edu.pl/"
+  },
+  "AWF_KATOWICE": {
+    "name_pl": "Akademia Wychowania Fizycznego w Katowicach",
+    "name_en": "The Jerzy Kukuczka Academy of Physical Education in Katowice",
+    "base_url": "http://usosapps.awf.katowice.pl/"
+  },
+  "IGNATIANUM": {
+    "name_pl": "Uniwersytet Ignatianum",
+    "name_en": "The Jesuit University Ignatianum in Krakow",
+    "base_url": "http://usosapi.ignatianum.edu.pl/"
+  },
+  "UKW": {
+    "name_pl": "Uniwersytet Kazimierza Wielkiego",
+    "name_en": "The Kazimierz Wielki University",
+    "base_url": "http://api.ukw.edu.pl/"
+  },
+  "USOS_TU_KIELCE": {
+    "name_pl": "Politechnika Świętokrzyska",
+    "name_en": "The Kielce University of Technology",
+    "base_url": "http://api.usos.tu.kielce.pl/"
+  },
+  "KPU_KROSNO": {
+    "name_pl": "Państwowa Akademia Nauk Stosowanych w Krośnie",
+    "name_en": "The Krosno Academy of Applied Sciences",
+    "base_url": "http://usosapps.kpu.krosno.pl/"
+  },
+  "WAT": {
+    "name_pl": "Wojskowa Akademia Techniczna",
+    "name_en": "The Military University of Technology in Warsaw",
+    "base_url": "http://usosapps.wat.edu.pl/"
+  },
+  "UMK": {
+    "name_pl": "Uniwersytet Mikołaja Kopernika",
+    "name_en": "The Nicolaus Copernicus University",
+    "base_url": "http://usosapps.umk.pl/"
+  },
+  "NWSM": {
+    "name_pl": "Niepubliczna Wyższa Szkoła Medyczna we Wrocławiu",
+    "name_en": "The Non-public School of Medicine in Wrocław",
+    "base_url": "http://usosapi.nwsm.pl/"
+  },
+  "PO": {
+    "name_pl": "Politechnika Opolska",
+    "name_en": "The Opole University of Technology",
+    "base_url": "http://usosapps.po.edu.pl/"
+  },
+  "PWT_WROC": {
+    "name_pl": "Papieski Wydział Teologiczny we Wrocławiu",
+    "name_en": "The Pontifical Faculty of Theology in Wrocław",
+    "base_url": "http://usosapi.pwt.wroc.pl/"
+  },
+  "UPJP2": {
+    "name_pl": "Uniwersytet Papieski Jana Pawła II w Krakowie",
+    "name_en": "The Pontifical University of John Paul II",
+    "base_url": "http://usosapi.upjp2.edu.pl/"
+  },
+  "AWF_POZNAN": {
+    "name_pl": "Akademia Wychowania Fizycznego im. Eugeniusza Piaseckiego w Poznaniu",
+    "name_en": "The Poznan University of Physical Education",
+    "base_url": "http://usosapps.awf.poznan.pl/"
+  },
+  "PUT_POZNAN": {
+    "name_pl": "Politechnika Poznańska",
+    "name_en": "The Poznan University of Technology",
+    "base_url": "https://usosapps.put.poznan.pl/"
+  },
+  "UE_POZNAN": {
+    "name_pl": "Uniwersytet Ekonomiczny w Poznaniu",
+    "name_en": "The Poznań University of Economics and Business",
+    "base_url": "http://usosapps.ue.poznan.pl/"
+  },
+  "PRZ": {
+    "name_pl": "Politechnika Rzeszowska",
+    "name_en": "The Rzeszów University of Technology",
+    "base_url": "http://usosapps.prz.edu.pl/"
+  },
+  "POLSL": {
+    "name_pl": "Politechnika Śląska",
+    "name_en": "The Silesian University of Technology",
+    "base_url": "http://usosapi.polsl.pl/"
+  },
+  "ANS_PILA": {
+    "name_pl": "Akademia Nauk Stosowanych im. Stanisława Staszica w Pile",
+    "name_en": "The Stanisław Staszic State University of Applied Sciences in Piła",
+    "base_url": "http://usosapi.ans.pila.pl/"
+  },
+  "KONIN": {
+    "name_pl": "Akademia Nauk Stosowanych w Koninie",
+    "name_en": "The State University of Applied Sciences",
+    "base_url": "http://usosapps.konin.edu.pl/"
+  },
+  "PANS_GLOGOW": {
+    "name_pl": "Państwowa Akademia Nauk Stosowanych w Głogowie",
+    "name_en": "The State University of Applied Sciences in Głogów",
+    "base_url": "http://usosapi.pans.glogow.pl/"
+  },
+  "ANSLESZNO": {
+    "name_pl": "Akademia Nauk Stosowanych w Lesznie",
+    "name_en": "The State University of Applied Sciences in Leszno",
+    "base_url": "http://usosapps.ansleszno.pl/"
+  },
+  "TU_KOSZALIN": {
+    "name_pl": "Politechnika Koszalińska",
+    "name_en": "The Technical University of Koszalin",
+    "base_url": "http://usosapi.tu.koszalin.pl/"
+  },
+  "PANSCHELM": {
+    "name_pl": "Państwowa Akademia Nauk Stosowanych w Chełmie",
+    "name_en": "The University College of Applied Sciences in Chelm",
+    "base_url": "http://usosapi.panschelm.edu.pl/"
+  },
+  "UTH": {
+    "name_pl": "Uczelnia Techniczno-Handlowa im. Heleny Chodkowskiej",
+    "name_en": "The University University of Technology and Economics",
+    "base_url": "http://usosapps.uth.edu.pl/"
+  },
+  "APS": {
+    "name_pl": "Uniwersytet APS",
+    "name_en": "The University of APS",
+    "base_url": "http://apps.aps.edu.pl/"
+  },
+  "UR_KRAKOW": {
+    "name_pl": "Uniwersytet Rolniczy",
+    "name_en": "The University of Agriculture",
+    "base_url": "http://usosapi.ur.krakow.pl/"
+  },
+  "UWB": {
+    "name_pl": "Uniwersytet w Białymstoku",
+    "name_en": "The University of Bialystok",
+    "base_url": "http://usosapps.uwb.edu.pl/"
+  },
+  "UBB": {
+    "name_pl": "Uniwersytet Bielsko-Bialski",
+    "name_en": "The University of Bielsko-Biała",
+    "base_url": "http://usosapi.ubb.edu.pl/"
+  },
+  "UE_KATOWICE": {
+    "name_pl": "Uniwersytet Ekonomiczny w Katowicach",
+    "name_en": "The University of Economics in Katowice",
+    "base_url": "http://usosapps.ue.katowice.pl/"
+  },
+  "WSGE": {
+    "name_pl": "Wyższa Szkoła Gospodarki Euroregionalnej im. Alcide De Gasperi",
+    "name_en": "The University of Euroregional Economy in Józefów - Warsaw",
+    "base_url": "http://usosapi.wsge.edu.pl/"
+  },
+  "UNI_LODZ": {
+    "name_pl": "Uniwersytet Łódzki",
+    "name_en": "The University of Lodz",
+    "base_url": "http://usosapps.uni.lodz.pl/"
+  },
+  "UMCS": {
+    "name_pl": "Uniwersytet Marii Curie-Skłodowskiej",
+    "name_en": "The University of Maria Curie-Skłodowska",
+    "base_url": "http://apps.umcs.pl/"
+  },
+  "UNI_OPOLE": {
+    "name_pl": "Uniwersytet Opolski",
+    "name_en": "The University of Opole",
+    "base_url": "http://usosapps.uni.opole.pl/"
+  },
+  "WSB_NET": {
+    "name_pl": "Wyższa Szkoła Bezpieczeństwa",
+    "name_en": "The University of Security in Poznań",
+    "base_url": "http://apps.wsb.net.pl/"
+  },
+  "UWS": {
+    "name_pl": "Uniwersytet w Siedlcach",
+    "name_en": "The University of Siedlce",
+    "base_url": "http://apps.uws.edu.pl/"
+  },
+  "US": {
+    "name_pl": "Uniwersytet Śląski w Katowicach",
+    "name_en": "The University of Silesia in Katowice",
+    "base_url": "http://usosapps.us.edu.pl/"
+  },
+  "UWM": {
+    "name_pl": "Uniwersytet Warmińsko-Mazurski w Olsztynie",
+    "name_en": "The University of Warmia and Mazury in Olsztyn",
+    "base_url": "http://apps.uwm.edu.pl/"
+  },
+  "UW": {
+    "name_pl": "Uniwersytet Warszawski",
+    "name_en": "The University of Warsaw",
+    "base_url": "http://usosapps.uw.edu.pl/"
+  },
+  "UNI_WROC": {
+    "name_pl": "Uniwersytet Wrocławski",
+    "name_en": "The University of Wroclaw",
+    "base_url": "http://usosapps.uni.wroc.pl/"
+  },
+  "UKEN_KRAKOW": {
+    "name_pl": "Uniwersytet Komisji Edukacji Narodowej",
+    "name_en": "The University of the National Education Commission",
+    "base_url": "http://usosapps.uken.krakow.pl/"
+  },
+  "OSW": {
+    "name_pl": "Akademia Finansów i Biznesu Vistula",
+    "name_en": "The Vistula University",
+    "base_url": "http://apps.osw.edu.pl/"
+  },
+  "PW": {
+    "name_pl": "Politechnika Warszawska",
+    "name_en": "The Warsaw University of Technology",
+    "base_url": "http://apps.usos.pw.edu.pl/"
+  },
+  "UE_WROC": {
+    "name_pl": "Uniwersytet Ekonomiczny we Wrocławiu",
+    "name_en": "The Wroclaw University of Economics",
+    "base_url": "http://usosapps.ue.wroc.pl/"
+  },
+  "PWR": {
+    "name_pl": "Politechnika Wrocławska",
+    "name_en": "The Wroclaw University of Science and Technology",
+    "base_url": "http://apps.usos.pwr.edu.pl/"
+  },
+  "UMW": {
+    "name_pl": "Uniwersytet Medyczny im. Piastów Śląskich we Wrocławiu",
+    "name_en": "The Wrocław Medical University",
+    "base_url": "http://usosapi.umw.edu.pl/"
+  },
+  "UPWR": {
+    "name_pl": "Uniwersytet Przyrodniczy we Wrocławiu",
+    "name_en": "The Wrocław University of Environmental and Life Science",
+    "base_url": "http://usosapps.upwr.edu.pl/"
+  },
+  "WSTE": {
+    "name_pl": "Wyższa Szkoła Turystyki i Ekologii",
+    "name_en": "The Wyższa Szkoła Turystyki i Ekologii",
+    "base_url": "http://apps.wste.edu.pl/"
+  },
+  "UP_SANOK": {
+    "name_pl": "UP Sanok",
+    "name_en": "UP Sanok",
+    "base_url": "http://usosapi.up-sanok.edu.pl/"
+  },
+  "PWSIP": {
+    "name_pl": "Akademia Łomżyńska",
+    "name_en": "University of Lomza",
+    "base_url": "http://api.pwsip.edu.pl/usosapps/"
+  },
+  "CHOPIN": {
+    "name_pl": "Uniwerstytet Muzyczny Fryderyka Chopina",
+    "name_en": "Uniwerstytet Muzyczny Fryderyka Chopina",
+    "base_url": "http://usosapps.chopin.edu.pl/"
+  },
+  "VISTULA": {
+    "name_pl": "Akademia Finansów i Biznesu Vistula z siedzibą w Warszawie",
+    "name_en": "VISTULA UNIVERSITY",
+    "base_url": "http://usosapps.vistula.edu.pl/"
+  },
+  "USOS_API_WAB": {
+    "name_pl": "Wrocławska Akademia Biznesu w Naukach Stosowanych",
+    "name_en": "WAB",
+    "base_url": "http://usos-api.wab.edu.pl/"
+  },
+  "APEIRON": {
+    "name_pl": "Wyższa Szkoła Bezpieczeństwa Publicznego i Indywidualnego „Apeiron” w Krakowie",
+    "name_en": "Wyższa Szkoła Bezpieczeństwa Publicznego i Indywidualnego „Apeiron” w Krakowie",
+    "base_url": "http://usosapi.apeiron.edu.pl/"
+  },
+  "AWS": {
+    "name_pl": "Wyższa Szkoła Kryminologii i Penitencjarystyki w Warszawie",
+    "name_en": "Wyższa Szkoła Kryminologii i Penitencjarystyki w Warszawie",
+    "base_url": "http://usosapps.aws.edu.pl/"
+  },
+  "NENCKI_USOS_PCSS": {
+    "name_pl": "http://apps.nencki.usos.pcss.pl/",
+    "name_en": "http://apps.nencki.usos.pcss.pl/",
+    "base_url": "http://apps.nencki.usos.pcss.pl/"
+  }
+}

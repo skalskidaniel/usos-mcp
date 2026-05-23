@@ -4,14 +4,30 @@ from pathlib import Path
 from requests_oauthlib import OAuth1Session
 from .storage import save_credentials, load_credentials
 
-REQUEST_TOKEN_URL = "https://usosapps.put.poznan.pl/services/oauth/request_token"
-AUTHORIZE_URL = "https://usosapps.put.poznan.pl/services/oauth/authorize"
-ACCESS_TOKEN_URL = "https://usosapps.put.poznan.pl/services/oauth/access_token"
-
 SCOPES = "offline_access|studies|grades|student_exams|crstests|other_emails"
 
 # Temporary file storage for request token before PIN verification
 REQUEST_TOKEN_FILE = Path(__file__).parent / ".request_token.json"
+UNIVERSITY_CONFIG_FILE = Path(__file__).parent / "university.json"
+
+def set_base_url(base_url: str) -> None:
+    with open(UNIVERSITY_CONFIG_FILE, "w") as f:
+        json.dump({"base_url": base_url}, f)
+
+def get_base_url() -> str:
+    if not UNIVERSITY_CONFIG_FILE.exists():
+        raise ValueError("University not set. Please call `set_university` first.")
+    with open(UNIVERSITY_CONFIG_FILE, "r") as f:
+        data = json.load(f)
+        return data["base_url"].rstrip("/")
+
+def _get_urls() -> tuple[str, str, str]:
+    base = get_base_url()
+    return (
+        f"{base}/services/oauth/request_token",
+        f"{base}/services/oauth/authorize",
+        f"{base}/services/oauth/access_token",
+    )
 
 def _save_request_token(token: str, secret: str) -> None:
     with open(REQUEST_TOKEN_FILE, "w") as f:
@@ -39,15 +55,16 @@ def get_authorization_url() -> str:
     Starts the OAuth 1.0a flow and returns the authorization URL.
     """
     client_key, client_secret = get_consumer_keys()
+    req_url, auth_url, _ = _get_urls()
     
     oauth = OAuth1Session(client_key, client_secret=client_secret, callback_uri="oob")
-    fetch_response = oauth.fetch_request_token(REQUEST_TOKEN_URL, data={"scopes": SCOPES})
+    fetch_response = oauth.fetch_request_token(req_url, data={"scopes": SCOPES})
     
     token = fetch_response.get('oauth_token')
     secret = fetch_response.get('oauth_token_secret')
     _save_request_token(token, secret)
     
-    authorization_url = oauth.authorization_url(AUTHORIZE_URL)
+    authorization_url = oauth.authorization_url(auth_url)
     return authorization_url
 
 def verify_pin_and_save_token(pin: str) -> bool:
@@ -59,6 +76,7 @@ def verify_pin_and_save_token(pin: str) -> bool:
         raise ValueError("No authentication in progress. Start authentication first.")
         
     client_key, client_secret = get_consumer_keys()
+    _, _, access_url = _get_urls()
     
     oauth = OAuth1Session(
         client_key,
@@ -68,7 +86,7 @@ def verify_pin_and_save_token(pin: str) -> bool:
         verifier=pin
     )
     
-    oauth_tokens = oauth.fetch_access_token(ACCESS_TOKEN_URL)
+    oauth_tokens = oauth.fetch_access_token(access_url)
     
     save_credentials(
         oauth_tokens.get('oauth_token'), 
