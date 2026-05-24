@@ -19,6 +19,12 @@ By wrapping the official USOS API in an MCP interface, this server translates co
 *   **Multi-Target Architecture:** Rather than hardcoding a single university's system, the server accepts a dynamic base URL and isolated API keys (e.g., University of Warsaw, Jagiellonian University, Warsaw University of Technology).
 *   **State Persistence:** OAuth 1.0a access tokens and university profiles are safely persisted in a local configuration file (e.g., `~/.usos-mcp.json`) securely on the student's system.
 
+## Contributing
+
+We welcome contributions! This server is built with a modular registry pattern that makes adding new USOS API integrations simple. 
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for a guide on how to add your own tools, prompts, and resources.
+
 ## Usage with MCP Clients (e.g., Cursor)
 
 You can connect this server to any MCP-compatible client like Cursor.
