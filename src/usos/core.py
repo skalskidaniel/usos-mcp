@@ -1,14 +1,13 @@
 from fastmcp import FastMCP
 
-from usos.tools.auth import register_auth_tools
 from .models import ServerSettings
 
 
 class USOSMcp:
-    def __init__(self, settings: ServerSettings | None = None) -> None:
-        self.settings = settings or ServerSettings()
+    def __init__(self,
+                 server_settings: ServerSettings | None = None) -> None:
+        self.settings = server_settings or ServerSettings()
         self.mcp = FastMCP("USOS MCP server")
-        register_auth_tools(self.mcp)
 
     @property
     def server(self):
