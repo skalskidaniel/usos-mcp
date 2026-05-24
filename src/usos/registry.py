@@ -21,10 +21,10 @@ class MCPRegistry:
             return func
         return decorator
 
-    def resource(self, name: str | None = None, description: str | None = None):
+    def resource(self, uri: str, name: str | None = None, description: str | None = None):
         """Decorator to register a resource."""
         def decorator(func: Callable[..., Any]):
-            self.resources.append(Resource(func=func, name=name, description=description))
+            self.resources.append(Resource(func=func, uri=uri, name=name, description=description))
             return func
         return decorator
 
@@ -35,7 +35,7 @@ class MCPRegistry:
         for p in self.prompts:
             mcp_app.prompt(name=p.name, description=p.description)(p.func)
         for r in self.resources:
-            mcp_app.resource(name=r.name, description=r.description)(r.func)
+            mcp_app.resource(r.uri, name=r.name, description=r.description)(r.func)
 
 
 registry = MCPRegistry()

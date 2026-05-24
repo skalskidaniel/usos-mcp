@@ -36,5 +36,6 @@ class Resource(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     func: Callable[..., Any]
+    uri: str
     name: str | None = None
     description: str | None = None
