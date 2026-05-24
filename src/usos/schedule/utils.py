@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+import time
 from typing import Any
 
 import requests
+from requests import HTTPError
+from requests.exceptions import ChunkedEncodingError
+from requests.exceptions import ConnectTimeout
+from requests.exceptions import ConnectionError as RequestsConnectionError
+from requests.exceptions import RequestException
+from requests.exceptions import ReadTimeout
+from requests.exceptions import Timeout
 
 from usos.auth.models import USOSAuthSettings
 from usos.auth.utils import get_authenticated_session
@@ -14,6 +22,8 @@ TT_DEFAULT_FIELDS = (
     "building_name|room_number|room_id|lecturer_ids|group_number|frequency"
 )
 CALENDAR_DEFAULT_FIELDS = "id|name|start_date|end_date|type|is_day_off"
+FACULTY_DEFAULT_FIELDS = "id|name"
+RETRIABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 def _get_base_url() -> str:
@@ -65,6 +75,45 @@ def _days_inclusive(start_date: str, end_date: str) -> int:
     return (end - start).days + 1
 
 
+def _get_with_retries(
+    requester,
+    url: str,
+    params: dict[str, Any],
+    *,
+    timeout: int = 20,
+    attempts: int = 3,
+    base_sleep_s: float = 0.4,
+):
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            response = requester(url, params=params, timeout=timeout)
+            response.raise_for_status()
+            return response
+        except HTTPError as exc:
+            status_code = exc.response.status_code if exc.response is not None else None
+            if status_code not in RETRIABLE_STATUS_CODES:
+                raise
+            last_error = exc
+            if attempt == attempts:
+                break
+            time.sleep(base_sleep_s * attempt)
+        except (
+            RequestsConnectionError,
+            ReadTimeout,
+            ConnectTimeout,
+            Timeout,
+            ChunkedEncodingError,
+        ) as exc:
+            last_error = exc
+            if attempt == attempts:
+                break
+            time.sleep(base_sleep_s * attempt)
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("Request failed without a captured error.")
+
+
 def fetch_student_schedule(start: str, days: int) -> list[dict[str, Any]]:
     if days < 1 or days > 7:
         raise ValueError("days must be between 1 and 7 for services/tt/student.")
@@ -88,6 +137,231 @@ def fetch_student_schedule(start: str, days: int) -> list[dict[str, Any]]:
     return []
 
 
+def _get_optional_authenticated_session():
+    try:
+        return get_authenticated_session()
+    except Exception:
+        return None
+
+
+def fetch_faculty_search(
+    query: str,
+    lang: str = "pl",
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    normalized_query = query.strip()
+    if not normalized_query:
+        raise ValueError("query must not be empty.")
+
+    safe_limit = max(1, min(limit, 20))
+    base_url = _get_base_url()
+    params = {
+        "lang": lang,
+        "query": normalized_query,
+        "fields": FACULTY_DEFAULT_FIELDS,
+        "num": safe_limit,
+        "start": 0,
+        "format": "json",
+    }
+
+    session = _get_optional_authenticated_session()
+    if session is not None:
+        response = session.get(
+            f"{base_url}/services/fac/search",
+            params=params,
+            timeout=20,
+        )
+    else:
+        response = requests.get(
+            f"{base_url}/services/fac/search",
+            params=params,
+            timeout=20,
+        )
+
+    response.raise_for_status()
+    payload = response.json()
+    items = payload.get("items", []) if isinstance(payload, dict) else []
+    if isinstance(items, list):
+        return items
+    return []
+
+
+def fetch_faculty(faculty_id: str) -> dict[str, Any]:
+    normalized_id = faculty_id.strip()
+    if not normalized_id:
+        raise ValueError("faculty_id is required.")
+
+    base_url = _get_base_url()
+    params = {
+        "fac_id": normalized_id,
+        "fields": FACULTY_DEFAULT_FIELDS,
+        "format": "json",
+    }
+
+    session = _get_optional_authenticated_session()
+    if session is not None:
+        response = session.get(
+            f"{base_url}/services/fac/faculty",
+            params=params,
+            timeout=20,
+        )
+    else:
+        response = requests.get(
+            f"{base_url}/services/fac/faculty",
+            params=params,
+            timeout=20,
+        )
+
+    response.raise_for_status()
+    payload = response.json()
+    if isinstance(payload, dict):
+        return payload
+    raise ValueError("Unexpected fac/faculty response format.")
+
+
+def fetch_user_faculties() -> list[dict[str, Any]]:
+    """Return faculties associated with the authenticated user.
+
+    Resolution strategy:
+    1. Student programmes (preferred for student users).
+    2. Employment functions (fallback for staff users or limited scopes).
+    """
+    base_url = _get_base_url()
+    session = get_authenticated_session()
+    faculties_by_id: dict[str, dict[str, Any]] = {}
+
+    def _collect_programme_ids(programmes: Any) -> set[str]:
+        programme_ids: set[str] = set()
+        if not isinstance(programmes, list):
+            return programme_ids
+        for programme_entry in programmes:
+            if not isinstance(programme_entry, dict):
+                continue
+            programme = programme_entry.get("programme")
+            if not isinstance(programme, dict):
+                continue
+            programme_id = programme.get("id")
+            if isinstance(programme_id, str) and programme_id:
+                programme_ids.add(programme_id)
+        return programme_ids
+
+    def _resolve_programme_faculty(programme_id: str) -> None:
+        try:
+            response = _get_with_retries(
+                session.get,
+                f"{base_url}/services/progs/programme",
+                params={
+                    "programme_id": programme_id,
+                    "fields": "id|description|faculty[id|name]",
+                    "format": "json",
+                },
+                timeout=20,
+                attempts=4,
+            )
+        except (HTTPError, RequestException):
+            return
+
+        payload = response.json()
+        if not isinstance(payload, dict):
+            return
+
+        faculty = payload.get("faculty")
+        if not isinstance(faculty, dict):
+            return
+        faculty_id = faculty.get("id")
+        if not isinstance(faculty_id, str) or not faculty_id:
+            return
+        if faculty_id in faculties_by_id:
+            return
+
+        normalized_entry: dict[str, Any] = {
+            "id": faculty_id,
+            "name": faculty.get("name"),
+            "source": "student_programmes",
+            "programme_id": programme_id,
+        }
+        description = payload.get("description")
+        if isinstance(description, dict):
+            programme_name = description.get("pl") or description.get("en")
+            if isinstance(programme_name, str) and programme_name:
+                normalized_entry["programme_name"] = programme_name
+        faculties_by_id[faculty_id] = normalized_entry
+
+    # 1) Student-linked faculties via programme mapping.
+    try:
+        response = _get_with_retries(
+            session.get,
+            f"{base_url}/services/users/user",
+            params={"fields": "student_programmes", "format": "json"},
+            timeout=20,
+            attempts=4,
+        )
+        payload = response.json()
+        if isinstance(payload, dict):
+            for programme_id in sorted(
+                _collect_programme_ids(payload.get("student_programmes", []))
+            ):
+                _resolve_programme_faculty(programme_id)
+    except (HTTPError, RequestException):
+        # Missing studies scope, flaky connection, or limited token;
+        # fallback below may still work.
+        pass
+
+    # 2) Staff-linked faculties fallback.
+    try:
+        response = _get_with_retries(
+            session.get,
+            f"{base_url}/services/users/employment_functions",
+            params={"fields": "faculty", "format": "json"},
+            timeout=20,
+            attempts=4,
+        )
+        employment_entries = response.json()
+        if isinstance(employment_entries, list):
+            for entry in employment_entries:
+                if not isinstance(entry, dict):
+                    continue
+                faculty = entry.get("faculty")
+                if not isinstance(faculty, dict):
+                    continue
+                faculty_id = faculty.get("id")
+                if not isinstance(faculty_id, str) or not faculty_id:
+                    continue
+                if faculty_id in faculties_by_id:
+                    continue
+                faculties_by_id[faculty_id] = {
+                    "id": faculty_id,
+                    "name": faculty.get("name"),
+                    "source": "employment_functions",
+                }
+    except (HTTPError, RequestException):
+        pass
+
+    return list(faculties_by_id.values())
+
+
+def resolve_faculty_id(faculty_id: str | None) -> str:
+    if faculty_id and faculty_id.strip():
+        return faculty_id.strip()
+
+    faculties = fetch_user_faculties()
+    if len(faculties) == 1:
+        resolved = faculties[0].get("id")
+        if isinstance(resolved, str) and resolved:
+            return resolved
+
+    if len(faculties) > 1:
+        raise ValueError(
+            "Multiple faculties found for this user. Pass faculty_id explicitly. "
+            f"Available faculties: {faculties}"
+        )
+
+    raise ValueError(
+        "Could not auto-resolve faculty_id from student programmes or employment functions. "
+        "Use get_my_faculties or search_faculties and pass faculty_id explicitly."
+    )
+
+
 def fetch_calendar_events(
     faculty_id: str,
     start_date: str,
@@ -105,7 +379,8 @@ def fetch_calendar_events(
         end_date=end_date,
         window_days=30,
     ):
-        response = session.get(
+        response = _get_with_retries(
+            session.get,
             f"{base_url}/services/calendar/search",
             params={
                 "faculty_id": faculty_id,
@@ -115,8 +390,8 @@ def fetch_calendar_events(
                 "format": "json",
             },
             timeout=20,
+            attempts=4,
         )
-        response.raise_for_status()
         payload = response.json()
         if isinstance(payload, list):
             events.extend(payload)
@@ -126,12 +401,13 @@ def fetch_calendar_events(
 
 def fetch_active_terms() -> list[dict[str, Any]]:
     base_url = _get_base_url()
-    response = requests.get(
+    response = _get_with_retries(
+        requests.get,
         f"{base_url}/services/terms/terms_index",
         params={"active_only": "true", "format": "json"},
         timeout=20,
+        attempts=4,
     )
-    response.raise_for_status()
     data = response.json()
     if isinstance(data, list):
         return data
@@ -142,12 +418,13 @@ def fetch_term(term_id: str) -> dict[str, Any]:
     if not term_id:
         raise ValueError("term_id is required.")
     base_url = _get_base_url()
-    response = requests.get(
+    response = _get_with_retries(
+        requests.get,
         f"{base_url}/services/terms/term",
         params={"term_id": term_id, "format": "json"},
         timeout=20,
+        attempts=4,
     )
-    response.raise_for_status()
     data = response.json()
     if isinstance(data, dict):
         return data

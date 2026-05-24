@@ -47,3 +47,8 @@ class Term(BaseModel):
     end_date: date
     finish_date: str
     is_active: bool = False
+
+
+class Faculty(BaseModel):
+    id: str
+    name: dict[str, str] | str

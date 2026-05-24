@@ -16,3 +16,20 @@ def check_schedule_today() -> str:
             "5. If there are no activities, say there are no classes today.",
         ]
     )
+
+
+@registry.prompt(
+    name="resolve_faculty_for_calendar",
+    description="Guidance for resolving faculty_id before using calendar tools.",
+)
+def resolve_faculty_for_calendar() -> str:
+    return "\n".join(
+        [
+            "Use this flow before calendar tools if faculty_id is unknown.",
+            "1. Call `get_my_faculties` first.",
+            "2. If exactly one faculty is returned, use its `id`.",
+            "3. If multiple faculties are returned, ask the user to choose or call `search_faculties`.",
+            "4. If no faculty is returned, use `search_faculties` with a name/code query.",
+            "5. Call calendar tools with explicit faculty_id when ambiguity remains.",
+        ]
+    )

@@ -14,6 +14,9 @@ USOS API modules used:
 Registered tools:
 - get_my_schedule: Fetch student timetable in a selected date window.
 - get_my_semester_schedule: Fetch timetable for an entire semester.
+- search_faculties: Search faculties and discover valid faculty IDs.
+- get_faculty: Read details for a single faculty ID.
+- get_my_faculties: List faculties linked to the authenticated student's programmes.
 - get_days_off: List day-off calendar events in a date range.
 - get_semester_days_off: List day-off events for a whole term.
 - get_exam_session_dates: List exam-session calendar events in a term.
@@ -21,6 +24,7 @@ Registered tools:
 
 Registered prompts:
 - check_schedule_today: Guide for checking and presenting today's schedule.
+- resolve_faculty_for_calendar: Faculty ID resolution flow for calendar tools.
 
 Registered resources:
 - usos://schedule/api-info: Summary of schedule package capabilities and limits.
@@ -29,4 +33,6 @@ Important constraints:
 - services/tt/student allows a maximum of 7 days per request.
 - services/calendar/search allows a maximum date range of one month per request.
 - services/calendar is marked as BETA in USOS API documentation.
+- Calendar tools can auto-resolve faculty_id from the authenticated user's profile
+  only when exactly one active faculty is found.
 """
