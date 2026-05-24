@@ -14,14 +14,21 @@
 - `.env` is **required** locally (gitignored). Template shows `FAST_MCP_HOST`, `FAST_MCP_TRANSPORT` (`http`/`stdio`), `FAST_MCP_PORT`, and USOS OAuth credentials (`USOS_API_PUT_CONSUMER_KEY`, `USOS_API_PUT_CONSUMER_SECRET`).
 - Run server: `uv run server` (uses `usos.core:main`) or `python -m usos`.
 - Docker: `Dockerfile` builds with `uv sync --frozen --no-dev`, defaults `FAST_MCP_TRANSPORT=stdio`, entrypoint `python -m usos`.
+- **Production (PyPI)**: Designed to be run by end-users via `uvx usos-mcp`.
+- **Production (Docker)**: Can be run via `docker run -i --rm -e ... ghcr.io/<username>/usos-mcp:latest`.
 
 ## Architecture
 - `src/usos/` — main package.
-  - `core.py`: `USOSMcp` class wrapping a `FastMCP` instance; `ServerSettings` loaded via `pydantic-settings` from `.env` with prefix `fast_mcp_`.
-  - `mcp/` — MCP prompt/tool definitions (only `prompts.py` exists, empty).
-  - `api/` — USOS API wrappers (`controllers.py`, `routes.py` — both empty stubs).
-  - `auth/` — OAuth 1.0a logic (`__init__.py` — empty stub).
-  - `models.py`, `utils.py` — empty stubs.
+- **Modular Auto-Discovery**: The codebase uses a Registry Pattern. `usos.core:USOSMcp` automatically discovers and imports any `tools.py`, `prompts.py`, and `resources.py` across all submodules (e.g., `src/usos/auth/tools.py`).
+  - To add a new tool, prompt, or resource, create a `tools.py`, `prompts.py`, or `resources.py` in the relevant package.
+  - Use `@registry.tool(description="...")`, `@registry.prompt()`, or `@registry.resource()` from `usos.registry`. Do **not** import or initialize FastMCP manually in these files.
+  - The registry validates definitions internally using `pydantic`.
+- Project Structure:
+  - `core.py`: Application entrypoint; initializes `FastMCP`, triggers module discovery, and binds registered tools/prompts/resources.
+  - `registry.py`: Exposes `registry` with decorators `@registry.tool()`, `@registry.prompt()`, and `@registry.resource()`.
+  - `discover.py` (or within `core.py`): Contains logic to recursively find and import `*.tools`, `*.prompts`, and `*.resources`.
+  - `models.py`: Contains `ServerSettings` (loaded via `pydantic-settings` from `.env` with prefix `fast_mcp_`).
+  - Submodules (`api/`, `auth/`, `mcp/`): Domain-specific logic. Each should independently contain its own `tools.py`, `prompts.py`, `resources.py`, `utils.py`, and `models.py` as needed.
 - The file `exceptons.py` is intentionally named (missing "i") — do **not** import from `usos.exceptions`.
 - `src/scripts/usos_versions.py` — standalone script that scans USOS API installations.
 - `tests/` is empty.
