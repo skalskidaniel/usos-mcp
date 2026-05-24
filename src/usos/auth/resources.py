@@ -5,7 +5,7 @@ import json
 @registry.resource(
     uri="usos://universities/supported",
     name="supported-universities",
-    description="Get a list of supported universities along with base URLs to set in env variables"
+    description="Get a JSON list of supported universities along with their base_url. Use this to lookup the user's university API endpoint."
 )
 def supported_universities() -> str:
     base_url = "https://usosapps.put.poznan.pl/services/apisrv/installations"

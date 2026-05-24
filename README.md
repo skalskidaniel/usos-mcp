@@ -23,13 +23,34 @@ By wrapping the official USOS API in an MCP interface, this server translates co
 
 You can connect this server to any MCP-compatible client like Cursor.
 
+### Authenticating with USOS
+
+Use the `setup_user_authentication` prompt to guide the user through OAuth setup. It should be run one step at a time and wait for the user's response before continuing.
+
+Sample conversation:
+
+```text
+Assistant: Use the `setup_user_authentication` prompt and follow these steps strictly to authenticate the user with the USOS API. Perform one step at a time and wait for the user's response before proceeding.
+
+1. Ask the user for the name of their university.
+2. Once provided, use the `usos://universities/supported` resource to find their university and its `base_url`.
+3. Instruct the user to visit `<base_url>/developers`, log in, register a new application, and obtain a Consumer Key and Consumer Secret.
+4. Wait for the user to provide the consumer key and secret.
+5. Use the `get_oauth_request_token` tool with the found `base_url`, `consumer_key`, and `consumer_secret`.
+6. Provide the `authorize_url` to the user and ask them to authorize the app and copy the PIN.
+7. Wait for the user to provide the PIN.
+8. Use the `get_oauth_access_token` tool with the `base_url`, `consumer_key`, `consumer_secret`, `oauth_token`, `oauth_token_secret`, and `pin`.
+9. Return a JSON snippet for their MCP client config
+10. Remind the user to keep these values private and restart their MCP client after saving them.
+```
+
 ### Option A: Running via PyPI (Recommended)
 If you have `uv` installed, you can use `uvx` to fetch and run the package dynamically without manual installation:
 
 ```json
 "usos": {
   "command": "uvx",
-  "args": ["usos-mcp"],
+  "args": ["--from", "usos-mcp", "server"],
   "env": {
     "USOS_API_BASE_URL": "...",
     "USOS_API_CONSUMER_KEY": "...",
@@ -49,7 +70,7 @@ If you prefer not to install Python/uv locally, you can use the Docker image. Th
     "-e", "USOS_API_BASE_URL=...",
     "-e", "USOS_API_CONSUMER_KEY=...",
     "-e", "USOS_API_CONSUMER_SECRET=...",
-    "ghcr.io/your-username/usos-mcp:latest"
+    "ghcr.io/skalskidaniel/usos-mcp:latest"
   ]
 }
 ```

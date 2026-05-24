@@ -4,7 +4,7 @@ from requests_oauthlib import OAuth1Session
 
 @registry.tool(
     name="get_oauth_request_token",
-    description="Step 1 of OAuth 1.0a: Get the request token and authorize URL. Returns oauth_token, oauth_token_secret, and authorize_url."
+    description="Step 1 of OAuth 1.0a: Get the request token and authorize URL. Returns oauth_token, oauth_token_secret, and authorize_url. Note: You must save the oauth_token_secret in your context memory to use it in step 2."
 )
 def get_oauth_request_token(base_url: str, consumer_key: str | None = None, consumer_secret: str | None = None) -> dict:
     settings = USOSAuthSettings()
@@ -71,3 +71,47 @@ def get_oauth_access_token(base_url: str, oauth_token: str, oauth_token_secret: 
         }
     except Exception as e:
         return {"error": str(e)}
+
+@registry.tool(
+    name="check_authentication",
+    description="Check if the MCP server is currently authenticated with the USOS API. Use this to verify if the user has completed the setup."
+)
+def check_authentication() -> dict:
+    settings = USOSAuthSettings()
+    
+    if not all([
+        settings.consumer_key, 
+        settings.consumer_secret, 
+        settings.oauth_token, 
+        settings.oauth_token_secret,
+        settings.base_url
+    ]):
+        return {
+            "authenticated": False, 
+            "reason": "Missing OAuth credentials or base URL in environment variables. Run the setup_usos_authentication prompt first."
+        }
+    
+    try:
+        from .utils import get_authenticated_session
+        session = get_authenticated_session()
+
+        test_url = f"{settings.base_url.rstrip('/')}/services/users/user"
+        response = session.get(test_url, timeout=10)
+        
+        if response.status_code == 200:
+            user_data = response.json()
+            return {
+                "authenticated": True,
+                "user": f"{user_data.get('first_name')} {user_data.get('last_name')}"
+            }
+        else:
+            return {
+                "authenticated": False,
+                "reason": f"API returned status {response.status_code}",
+                "details": response.text
+            }
+    except Exception as e:
+        return {
+            "authenticated": False,
+            "reason": str(e)
+        }
