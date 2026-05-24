@@ -2,7 +2,6 @@ from requests_oauthlib import OAuth1Session
 from .models import USOSAuthSettings
 
 def get_authenticated_session() -> OAuth1Session:
-    """Returns an authenticated OAuth1Session using environment variables."""
     settings = USOSAuthSettings()
     
     if not all([

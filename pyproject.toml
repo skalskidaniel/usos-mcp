@@ -1,6 +1,6 @@
 [project]
 name = "usos-mcp"
-version = "0.3.0"
+version = "0.3.1"
 description = "MCP server for USOS (Uniwersytecki System Obsługi Studiów)"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.14.1",
     "requests>=2.34.2",
     "requests-oauthlib>=2.0.0",
+    "ruff>=0.15.14",
 ]
 
 [project.scripts]

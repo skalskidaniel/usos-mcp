@@ -1,31 +1,12 @@
 # USOS Model Context Protocol (MCP) Server
 
-A standardized Model Context Protocol (MCP) server that bridges the official **USOS API** (Uniwersytecki System Obsługi Studiów) with generative AI clients (such as Claude Code, Claude Desktop, Cursor, and web-based assistants via tunnels). 
+A standardized Model Context Protocol (MCP) server that bridges the official **USOS API** (Uniwersytecki System Obsługi Studiów) with generative AI clients (such as Claude Code, Claude Desktop, Cursor, and web-based assistants via tunnels).
 
 This server allows students of Polish universities to query their schedules, track academic grades, monitor ECTS accumulation, search for lecturer contact data, and review study programs through natural language conversations.
 
 ---
 
-## Project Overview & Architecture
-
-### The Problem
-The USOSweb interface, while functional, presents nested tables, complex directories, and disparate systems for tracking grades, schedules, and program stages. Students frequently navigate multiple sub-menus to compile study progress, locate contact details, or coordinate schedules.
-
-### The Solution: USOS MCP Server
-By wrapping the official USOS API in an MCP interface, this server translates complex REST-like endpoints into declarative **Tools**, **Resources**, and **Prompts**. This empowers local LLM agents to act as interactive academic advisors, personal schedulers, and administrative guides.
-
-### Design Principles
-*   **Zero Middle-Man Hosting (RODO/GDPR-Shield):** Academic records, grades, and student IDs are highly private data. Because this MCP server runs *locally* on the student's machine, the data flow occurs solely between the university's official API servers and the local client. Your code does not collect or process student data in any external database, radically simplifying RODO compliance.
-*   **Multi-Target Architecture:** Rather than hardcoding a single university's system, the server accepts a dynamic base URL and isolated API keys (e.g., University of Warsaw, Jagiellonian University, Warsaw University of Technology).
-*   **State Persistence:** OAuth 1.0a access tokens and university profiles are safely persisted in a local configuration file (e.g., `~/.usos-mcp.json`) securely on the student's system.
-
-## Contributing
-
-We welcome contributions! This server is built with a modular registry pattern that makes adding new USOS API integrations simple. 
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for a guide on how to add your own tools, prompts, and resources.
-
-## Usage with MCP Clients (e.g., Cursor)
+## Usage with MCP Clients (e.g. Cursor, Claude desktop)
 
 You can connect this server to any MCP-compatible client like Cursor.
 
@@ -33,24 +14,8 @@ You can connect this server to any MCP-compatible client like Cursor.
 
 Use the `setup_user_authentication` prompt to guide the user through OAuth setup. It should be run one step at a time and wait for the user's response before continuing.
 
-Sample conversation:
-
-```text
-Assistant: Use the `setup_user_authentication` prompt and follow these steps strictly to authenticate the user with the USOS API. Perform one step at a time and wait for the user's response before proceeding.
-
-1. Ask the user for the name of their university.
-2. Once provided, use the `usos://universities/supported` resource to find their university and its `base_url`.
-3. Instruct the user to visit `<base_url>/developers`, log in, register a new application, and obtain a Consumer Key and Consumer Secret.
-4. Wait for the user to provide the consumer key and secret.
-5. Use the `get_oauth_request_token` tool with the found `base_url`, `consumer_key`, and `consumer_secret`.
-6. Provide the `authorize_url` to the user and ask them to authorize the app and copy the PIN.
-7. Wait for the user to provide the PIN.
-8. Use the `get_oauth_access_token` tool with the `base_url`, `consumer_key`, `consumer_secret`, `oauth_token`, `oauth_token_secret`, and `pin`.
-9. Return a JSON snippet for their MCP client config
-10. Remind the user to keep these values private and restart their MCP client after saving them.
-```
-
 ### Option A: Running via PyPI (Recommended)
+
 If you have `uv` installed, you can use `uvx` to fetch and run the package dynamically without manual installation:
 
 ```json
@@ -66,6 +31,7 @@ If you have `uv` installed, you can use `uvx` to fetch and run the package dynam
 ```
 
 ### Option B: Running via Docker
+
 If you prefer not to install Python/uv locally, you can use the Docker image. The `-i` flag is required for MCP to communicate over standard input/output.
 
 ```json
@@ -80,3 +46,9 @@ If you prefer not to install Python/uv locally, you can use the Docker image. Th
   ]
 }
 ```
+
+## Contributing
+
+Contributions are welcome! This server is built with a modular registry pattern that makes adding new USOS API integrations simple.
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for a guide on how to add your own tools, prompts, and resources.

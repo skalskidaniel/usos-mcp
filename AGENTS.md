@@ -1,39 +1,38 @@
 # AGENTS.md
 
 ## Entry Points
-- Package entry: `usos.core:main` — also mapped as `[project.scripts]` entry `server` and callable via `python -m usos`.
-- `src/usos/__main__.py` is functional (imports from `core`); do not treat it as empty anymore.
-- The old root `server.py` no longer exists.
+- `usos.core:main` — CLI entry (`uv run server`, `uvx usos-mcp`, `python -m usos`).
+- `usos.core:get_mcp` — factory used by `fastmcp.json` for FastMCP tooling.
+- `src/usos/__main__.py` imports from `core` and works (not a stub).
 
-## Runtime & Dependencies
-- Python `>=3.14` (`.python-version` enforces 3.14).
-- Uses **uv** for package management. Lockfile: `uv.lock`. Install: `uv sync` (or `uv sync --frozen --no-dev` for prod).
-- Key deps from `pyproject.toml`: `fastmcp`, `pydantic`, `pydantic-settings`, `dotenv`, `requests`.
-
-## Setup & Config
-- `.env` is **required** locally (gitignored). Template shows `FAST_MCP_HOST`, `FAST_MCP_TRANSPORT` (`http`/`stdio`), `FAST_MCP_PORT`, and USOS OAuth credentials (`USOS_API_PUT_CONSUMER_KEY`, `USOS_API_PUT_CONSUMER_SECRET`).
-- Run server: `uv run server` (uses `usos.core:main`) or `python -m usos`.
-- Docker: `Dockerfile` builds with `uv sync --frozen --no-dev`, defaults `FAST_MCP_TRANSPORT=stdio`, entrypoint `python -m usos`.
-- **Production (PyPI)**: Designed to be run by end-users via `uvx usos-mcp`.
-- **Production (Docker)**: Can be run via `docker run -i --rm -e ... ghcr.io/<username>/usos-mcp:latest`.
+## Dependencies & Setup
+- Python `>=3.14`. Uses **uv** (`uv sync`, `uv sync --frozen --no-dev`).
+- Runtime deps: `fastmcp`, `pydantic`, `pydantic-settings`, `dotenv`, `requests`, `requests-oauthlib`.
+- `.env` required locally (gitignored). Two independent env-prefix groups:
+  - `FAST_MCP_*` — transport (`stdio`/`http`/`sse`/`streamable-http`), host, port.
+  - `USOS_API_*` — `CONSUMER_KEY`, `CONSUMER_SECRET`, `BASE_URL`, `OAUTH_TOKEN`, `OAUTH_TOKEN_SECRET`.
+- No lint, test, or typecheck config exists. `tests/` is empty.
 
 ## Architecture
-- `src/usos/` — main package.
-- **Modular Auto-Discovery**: The codebase uses a Registry Pattern. `usos.core:USOSMcp` automatically discovers and imports any `tools.py`, `prompts.py`, and `resources.py` across all submodules (e.g., `src/usos/auth/tools.py`).
-  - To add a new tool, prompt, or resource, create a `tools.py`, `prompts.py`, or `resources.py` in the relevant package.
-  - Use `@registry.tool(description="...")`, `@registry.prompt()`, or `@registry.resource()` from `usos.registry`. Do **not** import or initialize FastMCP manually in these files.
-  - The registry validates definitions internally using `pydantic`.
-- Project Structure:
-  - `core.py`: Application entrypoint; initializes `FastMCP`, triggers module discovery, and binds registered tools/prompts/resources.
-  - `registry.py`: Exposes `registry` with decorators `@registry.tool()`, `@registry.prompt()`, and `@registry.resource()`.
-  - `discover.py` (or within `core.py`): Contains logic to recursively find and import `*.tools`, `*.prompts`, and `*.resources`.
-  - `models.py`: Contains `ServerSettings` (loaded via `pydantic-settings` from `.env` with prefix `fast_mcp_`).
-  - Submodules (`api/`, `auth/`, `mcp/`): Domain-specific logic. Each should independently contain its own `tools.py`, `prompts.py`, `resources.py`, `utils.py`, and `models.py` as needed.
-- The file `exceptons.py` is intentionally named (missing "i") — do **not** import from `usos.exceptions`.
-- `src/scripts/usos_versions.py` — standalone script that scans USOS API installations.
-- `tests/` is empty.
-- No CI, no lint/typecheck/test config yet.
+- `src/usos/` main package. Modular registry pattern.
+- `core.py`: Bootstraps `FastMCP`, runs `discover_modules()` (walks `pkgutil` for `*.tools`, `*.prompts`, `*.resources` under `usos.`), then binds registry to app.
+- `registry.py`: Exposes singleton `registry` with `@registry.tool()`, `@registry.prompt()`, `@registry.resource()` decorators. Do **not** import or init FastMCP in domain modules.
+- `models.py`: `ServerSettings` (pydantic-settings, `FAST_MCP_` prefix).
+- Domain packages (`auth/`, `schedule/`) each own their `tools.py`, `prompts.py`, `resources.py`, `models.py`, `utils.py`.
+- `auth/` — OAuth 1.0a setup (`get_oauth_request_token`, `get_oauth_access_token`, `check_authentication`), `setup_usos_authentication` prompt, `usos://universities/supported` resource.
+- `schedule/` — Timetable and calendar tools (`get_my_schedule`, `get_my_faculties`, `get_days_off`, `get_exam_session_dates`).
+- Auth utils (`get_authenticated_session`) provides the signed OAuth1Session reused by other packages. Uses `USOSAuthSettings` (env prefix `USOS_API_`).
+- Old root `server.py` removed.
 
-## USOS API
-- API reference: `https://apps.usos.edu.pl/developers/api/` (or university-specific like PUT).
-- Auth: OAuth 1.0a. Token/authorize/access endpoints are university-specific.
+## API Constraints
+- `services/tt/student`: max **7 days** per request.
+- `services/calendar/search`: max **30 days** per request (batching built into `fetch_calendar_events`).
+- `calendar/search` is marked BETA in USOS docs.
+- Faculty auto-resolution (`resolve_faculty_id`) works only when exactly one faculty is found; otherwise raises `MultipleFacultiesError`.
+- Term auto-resolution picks the first active term from `services/terms/terms_index`.
+
+## Build & CI
+- PyPI: `uv build && uv publish` (triggered on main branch push). Token via `UV_PUBLISH_TOKEN`.
+- Docker: GHCR `ghcr.io/skalskidaniel/usos-mcp` (triggered on main + semver tags). Stdio transport default.
+- Docker entrypoint: `python -m usos` with `FAST_MCP_TRANSPORT=stdio`.
+- Production end-user install: `uvx usos-mcp`.

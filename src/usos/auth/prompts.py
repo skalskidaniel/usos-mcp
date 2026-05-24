@@ -2,10 +2,9 @@ from usos.registry import registry
 
 @registry.prompt(
     name="setup_usos_authentication",
-    description="Interactive, step-by-step guide for generating and configuring USOS API OAuth credentials."
+    description="Use this prompt if you are using the MCP for the first time or need to authenticate."
 )
 def setup_usos_authentication() -> str:
-    """Use this prompt if you are using the MCP for the first time or need to authenticate."""
     return "\n".join([
         "Follow these steps strictly to authenticate the user with the USOS API. Perform one step at a time and wait for the user's response before proceeding.",
         "1. Ask the user for the name of their university.",

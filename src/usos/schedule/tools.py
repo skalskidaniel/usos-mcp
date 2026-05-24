@@ -1,11 +1,9 @@
-from typing import Any
 from usos.registry import registry
 from usos.utils import _error_payload
 
 
 from .utils import (
     fetch_calendar_events,
-    fetch_faculty_search,
     fetch_user_faculties,
     fetch_student_schedule,
     get_semester_date_range,
