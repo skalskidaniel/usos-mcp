@@ -5,13 +5,14 @@ This project is designed to be easily extendable through a modular registry patt
 ## Architecture
 
 The server uses `FastMCP` but abstracts it behind a custom `registry` system. This allows for:
+
 - **Auto-Discovery**: Any `tools.py`, `prompts.py`, or `resources.py` file found in subpackages of `src/usos/` is automatically imported and registered.
 - **Decoupling**: Modules don't need to know about the `FastMCP` app instance.
 
 ## Adding a New Module
 
 1.  **Create a Directory**: Create a new package under `src/usos/`, for example `src/usos/grades/`.
-2.  **Initialize**: Add an `__init__.py` file.
+2.  **Initialize**: Add an `__init__.py` file. Write a documentation inside.
 3.  **Add Components**: Create one or more of the following files:
     - `tools.py`: For MCP Tools (executable functions).
     - `prompts.py`: For MCP Prompts (templates for conversations).
