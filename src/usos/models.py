@@ -1,11 +1,13 @@
 from pydantic import BaseModel, Field, PositiveInt, field_validator, IPvAnyAddress, ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal, Callable, Any
+from pathlib import Path
+
+ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
 
 
 class ServerSettings(BaseSettings):
-    """Used for local development only"""
-    model_config = SettingsConfigDict(env_prefix="fast_mcp_", extra="ignore")
+    model_config = SettingsConfigDict(env_file=ENV_PATH, env_prefix="fast_mcp_", extra="ignore")
 
     transport: Literal["stdio", "http", "sse", "streamable-http"] = Field(default="stdio")
     host: str = Field(default="0.0.0.0")

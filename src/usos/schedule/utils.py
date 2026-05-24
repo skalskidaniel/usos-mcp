@@ -15,6 +15,7 @@ from requests.exceptions import Timeout
 
 from usos.auth.models import USOSAuthSettings
 from usos.auth.utils import get_authenticated_session
+from .models import MultipleFacultiesError
 
 
 TT_DEFAULT_FIELDS = (
@@ -41,12 +42,6 @@ def today_str() -> str:
     return date.today().isoformat()
 
 
-def week_start_str() -> str:
-    today = date.today()
-    monday = today - timedelta(days=today.weekday())
-    return monday.isoformat()
-
-
 def date_range_to_windows(
     start_date: str,
     end_date: str,
@@ -67,12 +62,6 @@ def date_range_to_windows(
         windows.append((current.isoformat(), current_end.isoformat()))
         current = current_end + timedelta(days=1)
     return windows
-
-
-def _days_inclusive(start_date: str, end_date: str) -> int:
-    start = _parse_date(start_date)
-    end = _parse_date(end_date)
-    return (end - start).days + 1
 
 
 def _get_with_retries(
@@ -120,7 +109,8 @@ def fetch_student_schedule(start: str, days: int) -> list[dict[str, Any]]:
 
     base_url = _get_base_url()
     session = get_authenticated_session()
-    response = session.get(
+    response = _get_with_retries(
+        session.get,
         f"{base_url}/services/tt/student",
         params={
             "start": start,
@@ -129,19 +119,12 @@ def fetch_student_schedule(start: str, days: int) -> list[dict[str, Any]]:
             "format": "json",
         },
         timeout=20,
+        attempts=4,
     )
-    response.raise_for_status()
     data = response.json()
     if isinstance(data, list):
         return data
     return []
-
-
-def _get_optional_authenticated_session():
-    try:
-        return get_authenticated_session()
-    except Exception:
-        return None
 
 
 def fetch_faculty_search(
@@ -164,59 +147,19 @@ def fetch_faculty_search(
         "format": "json",
     }
 
-    session = _get_optional_authenticated_session()
-    if session is not None:
-        response = session.get(
-            f"{base_url}/services/fac/search",
-            params=params,
-            timeout=20,
-        )
-    else:
-        response = requests.get(
-            f"{base_url}/services/fac/search",
-            params=params,
-            timeout=20,
-        )
-
-    response.raise_for_status()
+    response = _get_with_retries(
+        requests.get,
+        f"{base_url}/services/fac/search",
+        params=params,
+        timeout=20,
+        attempts=4,
+    )
     payload = response.json()
     items = payload.get("items", []) if isinstance(payload, dict) else []
     if isinstance(items, list):
         return items
     return []
 
-
-def fetch_faculty(faculty_id: str) -> dict[str, Any]:
-    normalized_id = faculty_id.strip()
-    if not normalized_id:
-        raise ValueError("faculty_id is required.")
-
-    base_url = _get_base_url()
-    params = {
-        "fac_id": normalized_id,
-        "fields": FACULTY_DEFAULT_FIELDS,
-        "format": "json",
-    }
-
-    session = _get_optional_authenticated_session()
-    if session is not None:
-        response = session.get(
-            f"{base_url}/services/fac/faculty",
-            params=params,
-            timeout=20,
-        )
-    else:
-        response = requests.get(
-            f"{base_url}/services/fac/faculty",
-            params=params,
-            timeout=20,
-        )
-
-    response.raise_for_status()
-    payload = response.json()
-    if isinstance(payload, dict):
-        return payload
-    raise ValueError("Unexpected fac/faculty response format.")
 
 
 def fetch_user_faculties() -> list[dict[str, Any]]:
@@ -226,6 +169,7 @@ def fetch_user_faculties() -> list[dict[str, Any]]:
     1. Student programmes (preferred for student users).
     2. Employment functions (fallback for staff users or limited scopes).
     """
+    # TODO test this function
     base_url = _get_base_url()
     session = get_authenticated_session()
     faculties_by_id: dict[str, dict[str, Any]] = {}
@@ -274,20 +218,11 @@ def fetch_user_faculties() -> list[dict[str, Any]]:
         if faculty_id in faculties_by_id:
             return
 
-        normalized_entry: dict[str, Any] = {
+        faculties_by_id[faculty_id] = {
             "id": faculty_id,
             "name": faculty.get("name"),
-            "source": "student_programmes",
-            "programme_id": programme_id,
         }
-        description = payload.get("description")
-        if isinstance(description, dict):
-            programme_name = description.get("pl") or description.get("en")
-            if isinstance(programme_name, str) and programme_name:
-                normalized_entry["programme_name"] = programme_name
-        faculties_by_id[faculty_id] = normalized_entry
 
-    # 1) Student-linked faculties via programme mapping.
     try:
         response = _get_with_retries(
             session.get,
@@ -302,38 +237,6 @@ def fetch_user_faculties() -> list[dict[str, Any]]:
                 _collect_programme_ids(payload.get("student_programmes", []))
             ):
                 _resolve_programme_faculty(programme_id)
-    except (HTTPError, RequestException):
-        # Missing studies scope, flaky connection, or limited token;
-        # fallback below may still work.
-        pass
-
-    # 2) Staff-linked faculties fallback.
-    try:
-        response = _get_with_retries(
-            session.get,
-            f"{base_url}/services/users/employment_functions",
-            params={"fields": "faculty", "format": "json"},
-            timeout=20,
-            attempts=4,
-        )
-        employment_entries = response.json()
-        if isinstance(employment_entries, list):
-            for entry in employment_entries:
-                if not isinstance(entry, dict):
-                    continue
-                faculty = entry.get("faculty")
-                if not isinstance(faculty, dict):
-                    continue
-                faculty_id = faculty.get("id")
-                if not isinstance(faculty_id, str) or not faculty_id:
-                    continue
-                if faculty_id in faculties_by_id:
-                    continue
-                faculties_by_id[faculty_id] = {
-                    "id": faculty_id,
-                    "name": faculty.get("name"),
-                    "source": "employment_functions",
-                }
     except (HTTPError, RequestException):
         pass
 
@@ -351,10 +254,7 @@ def resolve_faculty_id(faculty_id: str | None) -> str:
             return resolved
 
     if len(faculties) > 1:
-        raise ValueError(
-            "Multiple faculties found for this user. Pass faculty_id explicitly. "
-            f"Available faculties: {faculties}"
-        )
+        raise MultipleFacultiesError(faculties)
 
     raise ValueError(
         "Could not auto-resolve faculty_id from student programmes or employment functions. "
@@ -453,41 +353,3 @@ def resolve_term_id(term_id: str | None) -> str:
     return resolved
 
 
-def fetch_semester_schedule(term_id: str) -> list[dict[str, Any]]:
-    start_date, end_date = get_semester_date_range(term_id)
-    activities: list[dict[str, Any]] = []
-    for window_start, window_end in date_range_to_windows(
-        start_date=start_date,
-        end_date=end_date,
-        window_days=7,
-    ):
-        days = _days_inclusive(window_start, window_end)
-        activities.extend(fetch_student_schedule(start=window_start, days=days))
-    return activities
-
-
-def sort_and_deduplicate_activities(
-    activities: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    seen: set[tuple[Any, Any, Any, Any]] = set()
-    unique: list[dict[str, Any]] = []
-
-    for activity in sorted(
-        activities,
-        key=lambda item: (
-            str(item.get("start_time", "")),
-            str(item.get("end_time", "")),
-            str(item.get("type", "")),
-        ),
-    ):
-        key = (
-            activity.get("type"),
-            activity.get("start_time"),
-            activity.get("end_time"),
-            str(activity.get("name")),
-        )
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(activity)
-    return unique
