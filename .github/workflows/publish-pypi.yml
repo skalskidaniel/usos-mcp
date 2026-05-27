@@ -9,12 +9,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if version changed
+        id: version
+        run: |
+          CURRENT=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+          BEFORE="${{ github.event.before }}"
+          PREVIOUS=""
+
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            PREVIOUS=$(git show "${BEFORE}:pyproject.toml" 2>/dev/null | grep '^version = ' | cut -d'"' -f2 || true)
+          fi
+
+          if [ -n "$PREVIOUS" ] && [ "$CURRENT" = "$PREVIOUS" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Version unchanged ($CURRENT), skipping PyPI publish."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            if [ -n "$PREVIOUS" ]; then
+              echo "Version changed: $PREVIOUS -> $CURRENT"
+            else
+              echo "Publishing version $CURRENT"
+            fi
+          fi
+
       - uses: astral-sh/setup-uv@v4
+        if: steps.version.outputs.publish == 'true'
         with:
           python-version: "3.14"
+
       - run: uv build
+        if: steps.version.outputs.publish == 'true'
+
       - name: Publish to PyPI
+        if: steps.version.outputs.publish == 'true'
         env:
           UV_PUBLISH_USERNAME: __token__
           UV_PUBLISH_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: uv publish
+        run: uv publish --check-url https://pypi.org/simple/
