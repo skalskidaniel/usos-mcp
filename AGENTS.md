@@ -1,11 +1,13 @@
 # AGENTS.md
 
 ## Entry Points
+
 - `usos.core:main` — CLI entry (`uv run server`, `uvx usos-mcp`, `python -m usos`).
 - `usos.core:get_mcp` — factory used by `fastmcp.json` for FastMCP tooling.
 - `src/usos/__main__.py` imports from `core` and works (not a stub).
 
 ## Dependencies & Setup
+
 - Python `>=3.14`. Uses **uv** (`uv sync`, `uv sync --frozen --no-dev`).
 - Runtime deps: `fastmcp`, `pydantic`, `pydantic-settings`, `dotenv`, `requests`, `requests-oauthlib`.
 - `.env` required locally (gitignored). Two independent env-prefix groups:
@@ -14,6 +16,7 @@
 - No lint, test, or typecheck config exists. `tests/` is empty.
 
 ## Architecture
+
 - `src/usos/` main package. Modular registry pattern.
 - `core.py`: Bootstraps `FastMCP`, runs `discover_modules()` (walks `pkgutil` for `*.tools`, `*.prompts`, `*.resources` under `usos.`), then binds registry to app.
 - `registry.py`: Exposes singleton `registry` with `@registry.tool()`, `@registry.prompt()`, `@registry.resource()` decorators. Do **not** import or init FastMCP in domain modules.
@@ -26,6 +29,7 @@
 - Old root `server.py` removed.
 
 ## API Constraints
+
 - `services/tt/student`: max **7 days** per request.
 - `services/calendar/search`: max **30 days** per request (batching built into `fetch_calendar_events`).
 - `calendar/search` is marked BETA in USOS docs.
@@ -35,7 +39,12 @@
 - All grade retrieval tools require the user token to have the `grades` OAuth scope.
 
 ## Build & CI
+
 - PyPI: `uv build && uv publish` (triggered on main branch push). Token via `UV_PUBLISH_TOKEN`.
 - Docker: GHCR `ghcr.io/skalskidaniel/usos-mcp` (triggered on main + semver tags). Stdio transport default.
 - Docker entrypoint: `python -m usos` with `FAST_MCP_TRANSPORT=stdio`.
 - Production end-user install: `uvx usos-mcp`.
+
+## Documentation references
+
+- [FastMCP](https://gofastmcp.com/llms.txt)

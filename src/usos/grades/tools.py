@@ -14,17 +14,18 @@ from .models import GradeAverage
     name="get_my_grades",
     description=(
         "Fetch the authenticated student's grades. "
-        "Supports three modes: "
-        "'term' (default) — grades for a given academic term; "
+        "Supports four modes: "
+        "'term' — grades for a given academic term; "
         "'course' — grades for a specific course edition (requires course_id); "
-        "'latest' — recently modified grades (last N days)."
+        "'latest' — recently modified grades (last N days); "
+        "'all' (default) — grades from all academic terms overall."
     ),
 )
 def get_my_grades(
-    mode: str = "term",
+    mode: str = "all",
     term_id: str | None = None,
     course_id: str | None = None,
-    days: int = 7,
+    days: int | None = None,
 ) -> dict:
     try:
         mode = mode.lower().strip()
@@ -48,17 +49,34 @@ def get_my_grades(
                 "grades": grades,
             }
         elif mode == "latest":
+            if days is None:
+                days = 7
             if days < 1:
                 raise ValueError("days must be a positive integer.")
+            if days > 107:
+                raise ValueError("days must be not greater than 107")
             grades = fetch_latest_grades(days)
             return {
                 "mode": mode,
                 "days": days,
                 "grades": grades,
             }
+        elif mode == "all":
+            ects_data = fetch_user_ects_points()
+            active_terms = fetch_active_terms()
+            active_ids = [t["id"] for t in active_terms if "id" in t]
+            resolved_terms = list(set(active_ids + list(ects_data.keys())))
+            resolved_terms.sort()
+            
+            grades = fetch_grades_by_terms(resolved_terms)
+            return {
+                "mode": mode,
+                "term_ids": resolved_terms,
+                "grades": grades,
+            }
         else:
             raise ValueError(
-                f"Unsupported mode: '{mode}'. Supported modes are: 'term', 'course', 'latest'."
+                f"Unsupported mode: '{mode}'. Supported modes are: 'term', 'course', 'latest', 'all'."
             )
     except Exception as exc:
         return _error_payload(exc)
@@ -68,18 +86,22 @@ def get_my_grades(
     name="calculate_grade_average",
     description=(
         "Calculate the authenticated student's ECTS-weighted grade point average. "
-        "By default uses all active terms. Pass term_ids to filter by specific terms."
+        "By default uses all academic terms from the student's study history. "
+        "Pass term_ids to filter by specific terms."
     ),
 )
 def calculate_grade_average(term_ids: list[str] | None = None) -> dict:
     try:
         resolved_terms = term_ids
         if not resolved_terms:
+            ects_data = fetch_user_ects_points()
             active_terms = fetch_active_terms()
-            resolved_terms = [t["id"] for t in active_terms if "id" in t]
+            active_ids = [t["id"] for t in active_terms if "id" in t]
+            resolved_terms = list(set(active_ids + list(ects_data.keys())))
+            resolved_terms.sort()
             if not resolved_terms:
                 raise ValueError(
-                    "No active terms found to calculate average. Pass term_ids explicitly."
+                    "No academic terms found to calculate average. Pass term_ids explicitly."
                 )
 
         grades_data = fetch_grades_by_terms(resolved_terms)
