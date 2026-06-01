@@ -25,7 +25,8 @@ def get_oauth_request_token(base_url: str, consumer_key: str | None = None, cons
     )
     
     try:
-        fetch_response = oauth.fetch_request_token(request_token_url)
+        scopes = "studies|grades|offline_access"
+        fetch_response = oauth.fetch_request_token(f"{request_token_url}?scopes={scopes}")
         
         resource_owner_key = fetch_response.get("oauth_token")
         resource_owner_secret = fetch_response.get("oauth_token_secret")

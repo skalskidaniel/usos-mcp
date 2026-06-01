@@ -1,11 +1,13 @@
 # AGENTS.md
 
 ## Entry Points
+
 - `usos.core:main` — CLI entry (`uv run server`, `uvx usos-mcp`, `python -m usos`).
 - `usos.core:get_mcp` — factory used by `fastmcp.json` for FastMCP tooling.
 - `src/usos/__main__.py` imports from `core` and works (not a stub).
 
 ## Dependencies & Setup
+
 - Python `>=3.14`. Uses **uv** (`uv sync`, `uv sync --frozen --no-dev`).
 - Runtime deps: `fastmcp`, `pydantic`, `pydantic-settings`, `dotenv`, `requests`, `requests-oauthlib`.
 - `.env` required locally (gitignored). Two independent env-prefix groups:
@@ -14,25 +16,35 @@
 - No lint, test, or typecheck config exists. `tests/` is empty.
 
 ## Architecture
+
 - `src/usos/` main package. Modular registry pattern.
 - `core.py`: Bootstraps `FastMCP`, runs `discover_modules()` (walks `pkgutil` for `*.tools`, `*.prompts`, `*.resources` under `usos.`), then binds registry to app.
 - `registry.py`: Exposes singleton `registry` with `@registry.tool()`, `@registry.prompt()`, `@registry.resource()` decorators. Do **not** import or init FastMCP in domain modules.
 - `models.py`: `ServerSettings` (pydantic-settings, `FAST_MCP_` prefix).
-- Domain packages (`auth/`, `schedule/`) each own their `tools.py`, `prompts.py`, `resources.py`, `models.py`, `utils.py`.
+- Domain packages (`auth/`, `schedule/`, `grades/`) each own their `tools.py`, `prompts.py`, `resources.py`, `models.py`, `utils.py`.
 - `auth/` — OAuth 1.0a setup (`get_oauth_request_token`, `get_oauth_access_token`, `check_authentication`), `setup_usos_authentication` prompt, `usos://universities/supported` resource.
 - `schedule/` — Timetable and calendar tools (`get_my_schedule`, `get_my_faculties`, `get_days_off`, `get_exam_session_dates`).
+- `grades/` — Fetch student grades (`get_my_grades`) and calculate ECTS-weighted GPA (`calculate_grade_average`).
 - Auth utils (`get_authenticated_session`) provides the signed OAuth1Session reused by other packages. Uses `USOSAuthSettings` (env prefix `USOS_API_`).
 - Old root `server.py` removed.
 
 ## API Constraints
+
 - `services/tt/student`: max **7 days** per request.
 - `services/calendar/search`: max **30 days** per request (batching built into `fetch_calendar_events`).
 - `calendar/search` is marked BETA in USOS docs.
 - Faculty auto-resolution (`resolve_faculty_id`) works only when exactly one faculty is found; otherwise raises `MultipleFacultiesError`.
 - Term auto-resolution picks the first active term from `services/terms/terms_index`.
+- `calculate_grade_average` excludes non-numeric grade symbols (e.g., `ZAL`, `NZAL`, `NK`) and requires ECTS details fetched from `services/courses/user_ects_points`.
+- All grade retrieval tools require the user token to have the `grades` OAuth scope.
 
 ## Build & CI
+
 - PyPI: `uv build && uv publish` (triggered on main branch push). Token via `UV_PUBLISH_TOKEN`.
 - Docker: GHCR `ghcr.io/skalskidaniel/usos-mcp` (triggered on main + semver tags). Stdio transport default.
 - Docker entrypoint: `python -m usos` with `FAST_MCP_TRANSPORT=stdio`.
 - Production end-user install: `uvx usos-mcp`.
+
+## Documentation references
+
+- [FastMCP](https://gofastmcp.com/llms.txt)

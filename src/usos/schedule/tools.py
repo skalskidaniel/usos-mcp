@@ -1,15 +1,17 @@
 from usos.registry import registry
-from usos.utils import _error_payload
+from usos.utils import (
+    _error_payload,
+    get_semester_date_range,
+    resolve_term_id,
+    today_str
+)
 
 
 from .utils import (
     fetch_calendar_events,
     fetch_user_faculties,
     fetch_student_schedule,
-    get_semester_date_range,
-    resolve_faculty_id,
-    resolve_term_id,
-    today_str,
+    resolve_faculty_id
 )
 
 
