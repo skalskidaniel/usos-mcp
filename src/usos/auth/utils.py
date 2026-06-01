@@ -18,3 +18,6 @@ def get_authenticated_session() -> OAuth1Session:
         resource_owner_key=settings.oauth_token,
         resource_owner_secret=settings.oauth_token_secret
     )
+
+def get_auth_settings() -> USOSAuthSettings:
+    return USOSAuthSettings()
