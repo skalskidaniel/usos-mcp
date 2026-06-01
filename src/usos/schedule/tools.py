@@ -1,4 +1,4 @@
-from usos.registry import registry
+from fastmcp.tools import tool
 from usos.utils import (
     _error_payload,
     get_semester_date_range,
@@ -15,7 +15,7 @@ from .utils import (
 )
 
 
-@registry.tool(
+@tool(
     name="get_my_schedule",
     description="Fetch the authenticated student's timetable for a selected date window (1-7 days).",
 )
@@ -33,7 +33,7 @@ def get_my_schedule(start_date: str | None = None, days: int = 7) -> dict:
         return _error_payload(exc)
 
 
-@registry.tool(
+@tool(
     name="get_my_faculties",
     description=(
         "List faculties linked to the authenticated student's active programmes. "
@@ -48,7 +48,7 @@ def get_my_faculties() -> dict:
         return _error_payload(exc)
 
 
-@registry.tool(
+@tool(
     name="get_days_off",
     description=(
         "Find day-off calendar events in a date range. faculty_id is optional and "
@@ -84,7 +84,7 @@ def get_days_off(
         return _error_payload(exc)
 
 
-@registry.tool(
+@tool(
     name="get_exam_session_dates",
     description=(
         "Find exam session calendar events in a selected term. faculty_id is optional and "

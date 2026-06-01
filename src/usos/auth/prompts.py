@@ -1,6 +1,6 @@
-from usos.registry import registry
+from fastmcp.prompts import prompt
 
-@registry.prompt(
+@prompt(
     name="setup_usos_authentication",
     description="Use this prompt if you are using the MCP for the first time or need to authenticate."
 )

@@ -1,9 +1,9 @@
-from usos.registry import registry
+from fastmcp.resources import resource
 import requests
 import json
 
-@registry.resource(
-    uri="usos://universities/supported",
+@resource(
+    "usos://universities/supported",
     name="supported-universities",
     description="Get a JSON list of supported universities along with their base_url. Use this to lookup the user's university API endpoint."
 )

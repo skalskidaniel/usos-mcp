@@ -1,4 +1,4 @@
-from usos.registry import registry
+from fastmcp.tools import tool
 from usos.utils import _error_payload, resolve_term_id, fetch_active_terms
 from .utils import (
     fetch_grades_by_terms,
@@ -10,7 +10,7 @@ from .utils import (
 from .models import GradeAverage
 
 
-@registry.tool(
+@tool(
     name="get_my_grades",
     description=(
         "Fetch the authenticated student's grades. "
@@ -82,7 +82,7 @@ def get_my_grades(
         return _error_payload(exc)
 
 
-@registry.tool(
+@tool(
     name="calculate_grade_average",
     description=(
         "Calculate the authenticated student's ECTS-weighted grade point average. "

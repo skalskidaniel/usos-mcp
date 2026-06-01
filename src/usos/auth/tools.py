@@ -1,8 +1,8 @@
-from usos.registry import registry
+from fastmcp.tools import tool
 from .models import USOSAuthSettings
 from requests_oauthlib import OAuth1Session
 
-@registry.tool(
+@tool(
     name="get_oauth_request_token",
     description="Step 1 of OAuth 1.0a: Get the request token and authorize URL. Returns oauth_token, oauth_token_secret, and authorize_url. Note: You must save the oauth_token_secret in your context memory to use it in step 2."
 )
@@ -41,7 +41,7 @@ def get_oauth_request_token(base_url: str, consumer_key: str | None = None, cons
     except Exception as e:
         return {"error": str(e)}
 
-@registry.tool(
+@tool(
     name="get_oauth_access_token",
     description="Step 2 of OAuth 1.0a: Exchange the request token and PIN for a persistent access token. Returns oauth_token and oauth_token_secret."
 )
@@ -73,7 +73,7 @@ def get_oauth_access_token(base_url: str, oauth_token: str, oauth_token_secret: 
     except Exception as e:
         return {"error": str(e)}
 
-@registry.tool(
+@tool(
     name="check_authentication",
     description="Check if the MCP server is currently authenticated with the USOS API. Use this to verify if the user has completed the setup."
 )

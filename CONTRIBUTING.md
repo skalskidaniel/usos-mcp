@@ -1,12 +1,12 @@
 # Contribution Guide
 
-This project is designed to be easily extendable through a modular registry pattern. You can add new capabilities (Tools, Prompts, and Resources) by creating new modules within the `src/usos/` directory.
+This project is designed to be easily extendable through FastMCP's FileSystemProvider. You can add new capabilities (Tools, Prompts, and Resources) by creating new modules within the `src/usos/` directory.
 
 ## Architecture
 
-The server uses `FastMCP` but abstracts it behind a custom `registry` system. This allows for:
+The server uses `FastMCP` with a `FileSystemProvider`. This allows for:
 
-- **Auto-Discovery**: Any `tools.py`, `prompts.py`, or `resources.py` file found in subpackages of `src/usos/` is automatically imported and registered.
+- **Auto-Discovery**: Any `.py` file under `src/usos/` containing `@tool`, `@prompt`, or `@resource` is automatically discovered and registered.
 - **Decoupling**: Modules don't need to know about the `FastMCP` app instance.
 
 ## Adding a New Module
@@ -20,12 +20,12 @@ The server uses `FastMCP` but abstracts it behind a custom `registry` system. Th
 
 ## Defining Tools
 
-In your `tools.py`, import the `registry` and use the `@registry.tool()` decorator. Type hints are used by MCP to generate the tool's schema.
+In your `tools.py`, import `tool` and use the `@tool()` decorator. Type hints are used by MCP to generate the tool's schema.
 
 ```python
-from usos.registry import registry
+from fastmcp.tools import tool
 
-@registry.tool(
+@tool(
     name="get_my_grades", # Optional: defaults to function name
     description="Fetches the current student's grades from USOS."
 )
@@ -36,16 +36,17 @@ def get_my_grades(semester: str) -> dict:
 
 ## Defining Prompts & Resources
 
-Similarly, use `@registry.prompt()` and `@registry.resource()`:
+Similarly, use `@prompt()` and `@resource()`:
 
 ```python
-from usos.registry import registry
+from fastmcp.prompts import prompt
+from fastmcp.resources import resource
 
-@registry.prompt(name="explain_ects", description="Explains how ECTS points work")
+@prompt(name="explain_ects", description="Explains how ECTS points work")
 def explain_ects():
     return "ECTS points represent the workload of a course..."
 
-@registry.resource(uri="usos://grades/latest", name="Latest Grades")
+@resource("usos://grades/latest", name="Latest Grades")
 def latest_grades():
     return "Course: Math, Grade: 5.0"
 ```
