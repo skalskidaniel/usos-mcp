@@ -1,3 +1,7 @@
+import asyncio
+
+from fastmcp.dependencies import CurrentContext
+from fastmcp.server.context import Context
 from fastmcp.tools import tool
 from usos.utils import _error_payload, resolve_term_id, fetch_active_terms
 from .utils import (
@@ -21,17 +25,19 @@ from .models import GradeAverage
         "'all' (default) — grades from all academic terms overall."
     ),
 )
-def get_my_grades(
+async def get_my_grades(
     mode: str = "all",
     term_id: str | None = None,
     course_id: str | None = None,
     days: int | None = None,
+    ctx: Context = CurrentContext(),
 ) -> dict:
     try:
         mode = mode.lower().strip()
         if mode == "term":
-            resolved_term = resolve_term_id(term_id)
-            grades = fetch_grades_by_terms([resolved_term])
+            await ctx.info("Fetching grades for term.")
+            resolved_term = await asyncio.to_thread(resolve_term_id, term_id)
+            grades = await asyncio.to_thread(fetch_grades_by_terms, [resolved_term])
             return {
                 "mode": mode,
                 "term_id": resolved_term,
@@ -40,8 +46,13 @@ def get_my_grades(
         elif mode == "course":
             if not course_id:
                 raise ValueError("course_id is required in 'course' mode.")
-            resolved_term = resolve_term_id(term_id)
-            grades = fetch_course_edition_grades(course_id, resolved_term)
+            await ctx.info("Fetching grades for course edition.")
+            resolved_term = await asyncio.to_thread(resolve_term_id, term_id)
+            grades = await asyncio.to_thread(
+                fetch_course_edition_grades,
+                course_id,
+                resolved_term,
+            )
             return {
                 "mode": mode,
                 "course_id": course_id,
@@ -55,20 +66,22 @@ def get_my_grades(
                 raise ValueError("days must be a positive integer.")
             if days > 107:
                 raise ValueError("days must be not greater than 107")
-            grades = fetch_latest_grades(days)
+            await ctx.info("Fetching latest grades.")
+            grades = await asyncio.to_thread(fetch_latest_grades, days)
             return {
                 "mode": mode,
                 "days": days,
                 "grades": grades,
             }
         elif mode == "all":
-            ects_data = fetch_user_ects_points()
-            active_terms = fetch_active_terms()
+            await ctx.info("Fetching grades for all terms.")
+            ects_data = await asyncio.to_thread(fetch_user_ects_points)
+            active_terms = await asyncio.to_thread(fetch_active_terms)
             active_ids = [t["id"] for t in active_terms if "id" in t]
             resolved_terms = list(set(active_ids + list(ects_data.keys())))
             resolved_terms.sort()
             
-            grades = fetch_grades_by_terms(resolved_terms)
+            grades = await asyncio.to_thread(fetch_grades_by_terms, resolved_terms)
             return {
                 "mode": mode,
                 "term_ids": resolved_terms,
@@ -79,6 +92,7 @@ def get_my_grades(
                 f"Unsupported mode: '{mode}'. Supported modes are: 'term', 'course', 'latest', 'all'."
             )
     except Exception as exc:
+        await ctx.error(f"Failed to fetch grades: {exc}")
         return _error_payload(exc)
 
 
@@ -90,12 +104,16 @@ def get_my_grades(
         "Pass term_ids to filter by specific terms."
     ),
 )
-def calculate_grade_average(term_ids: list[str] | None = None) -> dict:
+async def calculate_grade_average(
+    term_ids: list[str] | None = None,
+    ctx: Context = CurrentContext(),
+) -> dict:
     try:
         resolved_terms = term_ids
         if not resolved_terms:
-            ects_data = fetch_user_ects_points()
-            active_terms = fetch_active_terms()
+            await ctx.info("Resolving academic terms for grade average.")
+            ects_data = await asyncio.to_thread(fetch_user_ects_points)
+            active_terms = await asyncio.to_thread(fetch_active_terms)
             active_ids = [t["id"] for t in active_terms if "id" in t]
             resolved_terms = list(set(active_ids + list(ects_data.keys())))
             resolved_terms.sort()
@@ -104,11 +122,14 @@ def calculate_grade_average(term_ids: list[str] | None = None) -> dict:
                     "No academic terms found to calculate average. Pass term_ids explicitly."
                 )
 
-        grades_data = fetch_grades_by_terms(resolved_terms)
-        ects_data = fetch_user_ects_points()
+        await ctx.info("Fetching grades and ECTS data for average.")
+        grades_data = await asyncio.to_thread(fetch_grades_by_terms, resolved_terms)
+        ects_data = await asyncio.to_thread(fetch_user_ects_points)
 
-        avg, total_ects, counted, skipped = compute_weighted_average(
-            grades_data, ects_data
+        avg, total_ects, counted, skipped = await asyncio.to_thread(
+            compute_weighted_average,
+            grades_data,
+            ects_data,
         )
 
         result = GradeAverage(
@@ -120,4 +141,5 @@ def calculate_grade_average(term_ids: list[str] | None = None) -> dict:
         )
         return result.model_dump()
     except Exception as exc:
+        await ctx.error(f"Failed to calculate grade average: {exc}")
         return _error_payload(exc)

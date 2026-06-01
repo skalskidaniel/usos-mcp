@@ -1,18 +1,28 @@
+import asyncio
+
+from fastmcp.dependencies import CurrentContext
+from fastmcp.server.context import Context
 from fastmcp.tools import tool
 from .models import USOSAuthSettings
 from requests_oauthlib import OAuth1Session
 
 @tool(
     name="get_oauth_request_token",
-    description="Step 1 of OAuth 1.0a: Get the request token and authorize URL. Returns oauth_token, oauth_token_secret, and authorize_url. Note: You must save the oauth_token_secret in your context memory to use it in step 2."
+    description="Step 1 of OAuth 1.0a: Get the request token and authorize URL. Returns oauth_token, oauth_token_secret, and authorize_url. The oauth_token_secret is also stored in session state for step 2."
 )
-def get_oauth_request_token(base_url: str, consumer_key: str | None = None, consumer_secret: str | None = None) -> dict:
+async def get_oauth_request_token(
+    base_url: str,
+    consumer_key: str | None = None,
+    consumer_secret: str | None = None,
+    ctx: Context = CurrentContext(),
+) -> dict:
     settings = USOSAuthSettings()
     
     c_key = consumer_key or settings.consumer_key
     c_secret = consumer_secret or settings.consumer_secret
     
     if not c_key or not c_secret:
+        await ctx.warning("Missing OAuth consumer credentials.")
         return {"error": "Consumer key and secret are required. Provide them as arguments or set them in the environment."}
     
     request_token_url = f"{base_url.rstrip('/')}/services/oauth/request_token"
@@ -25,13 +35,22 @@ def get_oauth_request_token(base_url: str, consumer_key: str | None = None, cons
     )
     
     try:
+        await ctx.info("Requesting OAuth request token.")
         scopes = "studies|grades|offline_access"
-        fetch_response = oauth.fetch_request_token(f"{request_token_url}?scopes={scopes}")
+        fetch_response = await asyncio.to_thread(
+            oauth.fetch_request_token,
+            f"{request_token_url}?scopes={scopes}",
+        )
         
         resource_owner_key = fetch_response.get("oauth_token")
         resource_owner_secret = fetch_response.get("oauth_token_secret")
         
         authorization_url = oauth.authorization_url(authorize_url)
+        if resource_owner_secret:
+            await ctx.set_state("oauth_token_secret", resource_owner_secret)
+            await ctx.info("Stored oauth_token_secret in session state.")
+        else:
+            await ctx.warning("Received empty oauth_token_secret from USOS.")
         
         return {
             "oauth_token": resource_owner_key,
@@ -39,20 +58,39 @@ def get_oauth_request_token(base_url: str, consumer_key: str | None = None, cons
             "authorize_url": authorization_url
         }
     except Exception as e:
+        await ctx.error(f"OAuth request token error: {e}")
         return {"error": str(e)}
 
 @tool(
     name="get_oauth_access_token",
-    description="Step 2 of OAuth 1.0a: Exchange the request token and PIN for a persistent access token. Returns oauth_token and oauth_token_secret."
+    description="Step 2 of OAuth 1.0a: Exchange the request token and PIN for a persistent access token. Reads oauth_token_secret from session state."
 )
-def get_oauth_access_token(base_url: str, oauth_token: str, oauth_token_secret: str, pin: str, consumer_key: str | None = None, consumer_secret: str | None = None) -> dict:
+async def get_oauth_access_token(
+    base_url: str,
+    oauth_token: str,
+    pin: str,
+    consumer_key: str | None = None,
+    consumer_secret: str | None = None,
+    ctx: Context = CurrentContext(),
+) -> dict:
     settings = USOSAuthSettings()
     
     c_key = consumer_key or settings.consumer_key
     c_secret = consumer_secret or settings.consumer_secret
     
     if not c_key or not c_secret:
+        await ctx.warning("Missing OAuth consumer credentials.")
         return {"error": "Consumer key and secret are required. Provide them as arguments or set them in the environment."}
+
+    oauth_token_secret = await ctx.get_state("oauth_token_secret")
+    if not oauth_token_secret:
+        await ctx.error("Missing oauth_token_secret in session state.")
+        return {
+            "error": "oauth_token_secret not found in session state. Run get_oauth_request_token in the same session first."
+        }
+    if not isinstance(oauth_token_secret, str):
+        await ctx.error("Invalid oauth_token_secret stored in session state.")
+        return {"error": "oauth_token_secret in session state is invalid."}
     
     access_token_url = f"{base_url.rstrip('/')}/services/oauth/access_token"
 
@@ -65,19 +103,25 @@ def get_oauth_access_token(base_url: str, oauth_token: str, oauth_token_secret: 
     )
 
     try:
-        oauth_tokens = oauth.fetch_access_token(access_token_url)
+        await ctx.info("Requesting OAuth access token.")
+        oauth_tokens = await asyncio.to_thread(
+            oauth.fetch_access_token,
+            access_token_url,
+        )
+        await ctx.delete_state("oauth_token_secret")
         return {
             "oauth_token": oauth_tokens.get("oauth_token"),
             "oauth_token_secret": oauth_tokens.get("oauth_token_secret")
         }
     except Exception as e:
+        await ctx.error(f"OAuth access token error: {e}")
         return {"error": str(e)}
 
 @tool(
     name="check_authentication",
     description="Check if the MCP server is currently authenticated with the USOS API. Use this to verify if the user has completed the setup."
 )
-def check_authentication() -> dict:
+async def check_authentication(ctx: Context = CurrentContext()) -> dict:
     settings = USOSAuthSettings()
     
     if not all([
@@ -87,6 +131,7 @@ def check_authentication() -> dict:
         settings.oauth_token_secret,
         settings.base_url
     ]):
+        await ctx.info("Missing OAuth credentials or base URL in environment variables.")
         return {
             "authenticated": False, 
             "reason": "Missing OAuth credentials or base URL in environment variables. Run the setup_usos_authentication prompt first."
@@ -97,7 +142,8 @@ def check_authentication() -> dict:
         session = get_authenticated_session()
 
         test_url = f"{settings.base_url.rstrip('/')}/services/users/user"
-        response = session.get(test_url, timeout=10)
+        await ctx.info("Checking USOS authentication status.")
+        response = await asyncio.to_thread(session.get, test_url, timeout=10)
         
         if response.status_code == 200:
             user_data = response.json()
@@ -112,6 +158,7 @@ def check_authentication() -> dict:
                 "details": response.text
             }
     except Exception as e:
+        await ctx.error(f"Authentication check failed: {e}")
         return {
             "authenticated": False,
             "reason": str(e)
