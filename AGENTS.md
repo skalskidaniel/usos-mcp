@@ -18,8 +18,7 @@
 ## Architecture
 
 - `src/usos/` main package. Modular registry pattern.
-- `core.py`: Bootstraps `FastMCP`, runs `discover_modules()` (walks `pkgutil` for `*.tools`, `*.prompts`, `*.resources` under `usos.`), then binds registry to app.
-- `registry.py`: Exposes singleton `registry` with `@registry.tool()`, `@registry.prompt()`, `@registry.resource()` decorators. Do **not** import or init FastMCP in domain modules.
+- `core.py`: Bootstraps `FastMCP` with a `FileSystemProvider` that scans `src/usos` for `@tool`, `@prompt`, and `@resource` decorators.
 - `models.py`: `ServerSettings` (pydantic-settings, `FAST_MCP_` prefix).
 - Domain packages (`auth/`, `schedule/`, `grades/`) each own their `tools.py`, `prompts.py`, `resources.py`, `models.py`, `utils.py`.
 - `auth/` — OAuth 1.0a setup (`get_oauth_request_token`, `get_oauth_access_token`, `check_authentication`), `setup_usos_authentication` prompt, `usos://universities/supported` resource.

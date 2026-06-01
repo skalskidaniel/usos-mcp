@@ -15,7 +15,7 @@ Entry points:
 Architecture:
 - core.py bootstraps FastMCP and auto-imports every `tools.py`, `prompts.py`, and
   `resources.py` under domain subpackages.
-- registry.py collects `@registry.tool`, `@registry.prompt`, and `@registry.resource`
+- FastMCP FileSystemProvider discovers `@tool`, `@prompt`, and `@resource`
   definitions and binds them to the FastMCP app at startup.
 - models.py holds ServerSettings for transport/host/port (`FAST_MCP_*` env prefix).
 
