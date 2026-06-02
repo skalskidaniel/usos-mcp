@@ -6,7 +6,7 @@ Cursor and Claude Desktop. Students authenticate once via OAuth 1.0a, then query
 timetables, calendars, and related academic information through natural language.
 
 Public API:
-- USOSMcp: Application wrapper around FastMCP (discovery, registration, run).
+- create_server: Factory function that builds and returns the FastMCP application.
 
 Entry points:
 - usos.core:main — primary CLI entry (`uv run server`, `uvx usos-mcp`).
@@ -20,12 +20,13 @@ Architecture:
 - models.py holds ServerSettings for transport/host/port (`FAST_MCP_*` env prefix).
 
 Domain subpackages (see each package's __init__.py for tools and API details):
-- usos.auth — OAuth 1.0a setup, credential checks, supported universities resource.
-- usos.schedule — Personal timetable, faculties, days off, exam session dates.
+- usos.auth — Interactive OAuth 1.0a login/logout, credentials verification, supported universities resource.
+- usos.schedule — Student timetable, faculties, days off, exam session dates.
+- usos.grades — Student grades and ECTS-weighted GPA average calculations.
 
-USOS credentials are configured separately under the `USOS_API_*` prefix (see usos.auth).
+USOS credentials are saved in local file storage after interactive authentication, or can be configured via environment variables under the `USOS_API_*` prefix.
 """
 
-from .core import USOSMcp
+from .core import create_server
 
-__all__ = ["USOSMcp"]
+__all__ = ["create_server"]

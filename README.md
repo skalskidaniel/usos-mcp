@@ -12,7 +12,7 @@ You can connect this server to any MCP-compatible client like Cursor.
 
 ### Authenticating with USOS
 
-Use the `setup_user_authentication` prompt to guide the user through OAuth setup. It should be run one step at a time and wait for the user's response before continuing.
+Use the `authenticate_me` prompt to guide the user through the interactive OAuth setup. It should be run one step at a time, waiting for the user's response before continuing. Alternatively, the user can call the `login` tool directly. Once authentication is complete, credentials are saved securely to local file storage (typically `~/.config/usos-mcp/store/auth/credentials.json`) so they do not need to be supplied as environment variables in subsequent runs.
 
 ### Option A: Running via PyPI (Recommended)
 
@@ -21,12 +21,7 @@ If you have `uv` installed, you can use `uvx` to fetch and run the package dynam
 ```json
 "usos": {
   "command": "uvx",
-  "args": ["--from", "usos-mcp", "server"],
-  "env": {
-    "USOS_API_BASE_URL": "...",
-    "USOS_API_CONSUMER_KEY": "...",
-    "USOS_API_CONSUMER_SECRET": "..."
-  }
+  "args": ["--from", "usos-mcp", "server"]
 }
 ```
 
@@ -39,9 +34,6 @@ If you prefer not to install Python/uv locally, you can use the Docker image. Th
   "command": "docker",
   "args": [
     "run", "-i", "--rm",
-    "-e", "USOS_API_BASE_URL=...",
-    "-e", "USOS_API_CONSUMER_KEY=...",
-    "-e", "USOS_API_CONSUMER_SECRET=...",
     "ghcr.io/skalskidaniel/usos-mcp:latest"
   ]
 }

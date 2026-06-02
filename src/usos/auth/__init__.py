@@ -11,16 +11,16 @@ USOS API modules used:
 - services/users/user (authentication health check)
 
 Registered tools:
-- get_oauth_request_token: Start OAuth 1.0a; return request token, secret, and authorize URL.
-- get_oauth_access_token: Exchange request token and user PIN for persistent access credentials.
-- check_authentication: Verify env credentials and probe the API with the current session.
+- login: Interactive step-by-step authentication tool.
+- check_login: Verify local credentials and probe the API with the current session.
+- logout: Clear stored credentials from local configuration store.
 
 Registered prompts:
-- setup_usos_authentication: Step-by-step guide for first-time OAuth setup in the MCP client.
+- authenticate_me: Interactive step-by-step guide for first-time OAuth setup in the MCP client.
 
 Registered resources:
 - usos://universities/supported: List of USOS installations with `base_url` for university lookup.
 
 OAuth endpoints are university-specific; token and authorize URLs are derived from `base_url`.
-Consumer credentials can be passed to setup tools explicitly or loaded from the environment.
+Credentials can be passed to setup tools explicitly or loaded from the environment/local config storage.
 """

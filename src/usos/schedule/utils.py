@@ -11,6 +11,7 @@ from usos.utils import (
     _get_base_url,
     _get_with_retries,
     date_range_to_windows,
+    extract_localized_str,
 )
 from .models import MultipleFacultiesError
 
@@ -21,7 +22,6 @@ TT_DEFAULT_FIELDS = (
 )
 CALENDAR_DEFAULT_FIELDS = "id|name|start_date|end_date|type|is_day_off"
 FACULTY_DEFAULT_FIELDS = "id|name"
-
 
 
 def fetch_student_schedule(start: str, days: int) -> list[dict[str, Any]]:
@@ -82,7 +82,6 @@ def fetch_faculty_search(
     return []
 
 
-
 def fetch_user_faculties() -> list[dict[str, Any]]:
     """Return faculties associated with the authenticated user.
 
@@ -123,7 +122,7 @@ def fetch_user_faculties() -> list[dict[str, Any]]:
                 timeout=20,
                 attempts=4,
             )
-        except (HTTPError, RequestException):
+        except HTTPError, RequestException:
             return
 
         payload = response.json()
@@ -158,7 +157,7 @@ def fetch_user_faculties() -> list[dict[str, Any]]:
                 _collect_programme_ids(payload.get("student_programmes", []))
             ):
                 _resolve_programme_faculty(programme_id)
-    except (HTTPError, RequestException):
+    except HTTPError, RequestException:
         pass
 
     return list(faculties_by_id.values())
@@ -179,7 +178,7 @@ def resolve_faculty_id(faculty_id: str | None) -> str:
 
     raise ValueError(
         "Could not auto-resolve faculty_id from student programmes or employment functions. "
-        "Use get_my_faculties or search_faculties and pass faculty_id explicitly."
+        "Use get_faculties and pass faculty_id explicitly."
     )
 
 
@@ -220,6 +219,21 @@ def fetch_calendar_events(
     return events
 
 
+def flatten_calendar_event(event: dict[str, Any]) -> dict[str, Any]:
+    name_str = extract_localized_str(event.get("name"))
 
+    start_date = event.get("start_date")
+    if isinstance(start_date, str) and " " in start_date:
+        start_date = start_date.split(" ")[0]
+    end_date = event.get("end_date")
+    if isinstance(end_date, str) and " " in end_date:
+        end_date = end_date.split(" ")[0]
 
-
+    return {
+        "id": event.get("id"),
+        "name": name_str,
+        "start_date": start_date,
+        "end_date": end_date,
+        "type": event.get("type"),
+        "is_day_off": bool(event.get("is_day_off")),
+    }

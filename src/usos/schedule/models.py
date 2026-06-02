@@ -39,10 +39,10 @@ class ExamActivity(Activity):
 
 class CalendarEvent(BaseModel):
     id: str
-    name: dict[str, str] | str
-    start_date: date
-    end_date: date
-    type: str
+    name: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    type: str | None = None
     is_day_off: bool = False
 
 

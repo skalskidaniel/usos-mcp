@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -17,10 +15,6 @@ from requests.exceptions import Timeout
 from usos.auth.models import USOSAuthSettings
 
 RETRIABLE_STATUS_CODES = {429, 500, 502, 503, 504}
-
-
-def _error_payload(exc: Exception) -> dict:
-    return {"error": str(exc)}
 
 
 def _get_base_url() -> str:
@@ -146,8 +140,49 @@ def resolve_term_id(term_id: str | None) -> str:
     active_terms = fetch_active_terms()
     if not active_terms:
         raise ValueError("No active terms found in this USOS installation.")
-    first = active_terms[0]
-    resolved = first.get("id")
-    if not isinstance(resolved, str) or not resolved:
-        raise ValueError("Active term data does not include a valid term id.")
-    return resolved
+
+    today = date.today()
+    matching_terms = []
+    for term in active_terms:
+        t_id = term.get("id")
+        start_str = term.get("start_date")
+        finish_str = term.get("finish_date") or term.get("end_date")
+        if (
+            isinstance(t_id, str)
+            and t_id
+            and isinstance(start_str, str)
+            and isinstance(finish_str, str)
+        ):
+            try:
+                start_d = _parse_date(start_str)
+                finish_d = _parse_date(finish_str)
+                if start_d <= today <= finish_d:
+                    duration = (finish_d - start_d).days
+                    matching_terms.append((duration, t_id))
+            except ValueError:
+                continue
+
+    if matching_terms:
+        matching_terms.sort()
+        return matching_terms[0][1]
+
+    for term in active_terms:
+        resolved = term.get("id")
+        if isinstance(resolved, str) and resolved:
+            return resolved
+
+    raise ValueError("Active term data does not include a valid term id.")
+
+
+def extract_localized_str(
+    value: str | dict | None,
+    prefer: str = "en",
+) -> str | None:
+    """Extract a single string from a USOS localized field (str, dict, or None)."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return value.get(prefer) or value.get("pl") or next(iter(value.values()), None)
+    return None

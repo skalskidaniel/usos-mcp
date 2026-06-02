@@ -1,6 +1,6 @@
 [project]
 name = "usos-mcp"
-version = "0.3.3"
+version = "0.3.4"
 description = "MCP server for USOS (Uniwersytecki System Obsługi Studiów)"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -9,9 +9,9 @@ dependencies = [
     "fastmcp>=3.3.1",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",
+    "py-key-value-aio[filetree]>=0.4.4",
     "requests>=2.34.2",
     "requests-oauthlib>=2.0.0",
-    "ruff>=0.15.14",
 ]
 
 [project.scripts]
@@ -19,3 +19,9 @@ server = "usos.core:main"
 
 [tool.uv]
 package = true
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "ruff>=0.15.15",
+]

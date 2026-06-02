@@ -12,13 +12,10 @@ USOS API modules used:
 - services/terms
 
 Registered tools:
-- get_my_schedule: Fetch student timetable in a selected date window.
-- get_my_faculties: List faculties linked to the authenticated student's programmes.
+- get_schedule: Fetch student timetable in a selected date window.
+- get_faculties: List faculties linked to the authenticated student's programmes.
 - get_days_off: List day-off calendar events in a date range.
 - get_exam_session_dates: List exam-session calendar events in a term.
-
-Registered resources:
-- usos://schedule/api-info: Summary of schedule package capabilities and limits.
 
 Important constraints:
 - services/tt/student allows a maximum of 7 days per request.
