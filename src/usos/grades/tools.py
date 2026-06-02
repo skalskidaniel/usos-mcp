@@ -19,7 +19,7 @@ from .models import GradeAverage, GradeEntry
 
 
 @tool(
-    name="get_my_grades",
+    name="get_grades",
     description=(
         "Fetch the authenticated student's grades. "
         "Supports four modes: "
@@ -37,7 +37,7 @@ from .models import GradeAverage, GradeEntry
     },
     timeout=30
 )
-async def get_my_grades(
+async def get_grades(
     mode: str = "all",
     term_id: str | None = None,
     course_id: str | None = None,
@@ -113,7 +113,7 @@ async def get_my_grades(
 
 
 @tool(
-    name="calculate_grade_average",
+    name="get_gpa",
     description=(
         "Calculate the authenticated student's ECTS-weighted grade point average. "
         "By default uses all academic terms from the student's study history. "
@@ -128,7 +128,7 @@ async def get_my_grades(
     },
     timeout=30
 )
-async def calculate_grade_average(
+async def get_gpa(
     term_ids: list[str] | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:

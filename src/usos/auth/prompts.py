@@ -1,10 +1,10 @@
 from fastmcp.prompts import prompt
 
 @prompt(
-    name="setup_usos_authentication",
+    name="authenticate_me",
     description="Use this prompt if you are using the MCP for the first time or need to authenticate."
 )
-def setup_usos_authentication() -> str:
+def authenticate_me_prompt() -> str:
     return "\n".join([
         "You are going to guide the user through the USOS authentication process using the `authenticate` tool.",
         "Perform one step at a time and wait for the user's response before calling the tool again with new parameters.",

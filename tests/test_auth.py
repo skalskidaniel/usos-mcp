@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 # Import model helpers
 from usos.auth.models import USOSAuthSettings, get_storage_dir
 from usos.auth.utils import save_auth_config
-from usos.auth.tools import authenticate, clear_authentication
+from usos.auth.tools import login, logout
 
 
 class MockContext:
@@ -121,12 +121,12 @@ class TestAuthConfig(unittest.TestCase):
         ctx = MockContext()
 
         # Step 1: Initialize (no parameters)
-        res = asyncio.run(authenticate(ctx=ctx))
+        res = asyncio.run(login(ctx=ctx))
         self.assertEqual(res["status"], "AWAITING_BASE_URL")
         self.assertEqual(asyncio.run(ctx.get_state("auth_step")), "AWAITING_BASE_URL")
 
         # Step 2: Provide base_url
-        res = asyncio.run(authenticate(base_url="https://usos.uw.edu.pl", ctx=ctx))
+        res = asyncio.run(login(base_url="https://usos.uw.edu.pl", ctx=ctx))
         self.assertEqual(res["status"], "AWAITING_APP_REGISTRATION")
         self.assertEqual(asyncio.run(ctx.get_state("auth_base_url")), "https://usos.uw.edu.pl")
         self.assertEqual(asyncio.run(ctx.get_state("auth_step")), "AWAITING_APP_REGISTRATION")
@@ -141,7 +141,7 @@ class TestAuthConfig(unittest.TestCase):
             mock_oauth.authorization_url.return_value = "https://usos.uw.edu.pl/authorize?oauth_token=req_token"
             mock_oauth_cls.return_value = mock_oauth
 
-            res = asyncio.run(authenticate(
+            res = asyncio.run(login(
                 consumer_key="my_key",
                 consumer_secret="my_secret",
                 ctx=ctx
@@ -164,7 +164,7 @@ class TestAuthConfig(unittest.TestCase):
             }
             mock_oauth_cls.return_value = mock_oauth
 
-            res = asyncio.run(authenticate(pin="123456", ctx=ctx))
+            res = asyncio.run(login(pin="123456", ctx=ctx))
 
         self.assertEqual(res["status"], "SUCCESS")
 
@@ -196,7 +196,7 @@ class TestAuthConfig(unittest.TestCase):
         ctx = MockContext()
         asyncio.run(ctx.set_state("auth_step", "AWAITING_PIN"))
 
-        result = asyncio.run(clear_authentication(ctx=ctx))
+        result = asyncio.run(logout(ctx=ctx))
         self.assertTrue(result["success"])
         self.assertFalse(self.config_file_path.exists())
         # Verify context state got cleared as well

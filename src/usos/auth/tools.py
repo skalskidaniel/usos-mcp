@@ -10,7 +10,7 @@ from requests_oauthlib import OAuth1Session
 
 
 @tool(
-    name="authenticate",
+    name="login",
     description="Interactive step-by-step authentication tool. Run this tool with no parameters first to start.",
     tags={"auth"},
     annotations={
@@ -21,7 +21,7 @@ from requests_oauthlib import OAuth1Session
     },
     timeout=15
 )
-async def authenticate(
+async def login(
     base_url: str | None = None,
     consumer_key: str | None = None,
     consumer_secret: str | None = None,
@@ -183,7 +183,7 @@ async def authenticate(
             raise ToolError(f"OAuth access token error: {e}") from e
 
 @tool(
-    name="check_authentication",
+    name="check_login",
     description="Check if the MCP server is currently authenticated with the USOS API. Use this to verify if the user has completed the setup.",
     tags={"auth"},
     annotations={
@@ -194,7 +194,7 @@ async def authenticate(
     },
     timeout=15
 )
-async def check_authentication(
+async def check_login(
     settings: USOSAuthSettings = Depends(get_auth_settings),
     ctx: Context = CurrentContext()
 ) -> dict:
@@ -237,7 +237,7 @@ async def check_authentication(
         raise ToolError(f"Authentication check failed: {e}") from e
 
 @tool(
-    name="clear_authentication",
+    name="logout",
     description="Log out and delete stored USOS API authentication credentials from the local configuration store.",
     annotations={
         "readOnlyHint": False,
@@ -247,7 +247,7 @@ async def check_authentication(
     },
     timeout=10
 )
-async def clear_authentication(
+async def logout(
     ctx: Context = CurrentContext()
 ) -> dict:
     from .models import get_storage_dir

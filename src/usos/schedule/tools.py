@@ -22,7 +22,7 @@ from .utils import (
 
 
 @tool(
-    name="get_my_schedule",
+    name="get_schedule",
     description="Fetch the authenticated student's timetable for a selected date window (1-7 days).",
     tags={"schedule"},
     annotations={
@@ -33,7 +33,7 @@ from .utils import (
     },
     timeout=30
 )
-async def get_my_schedule(
+async def get_schedule(
     start_date: str | None = None,
     days: int = 7,
     ctx: Context = CurrentContext(),
@@ -58,7 +58,7 @@ async def get_my_schedule(
 
 
 @tool(
-    name="get_my_faculties",
+    name="get_faculties",
     description=(
         "List faculties linked to the authenticated student's active programmes. "
         "Use ONLY when faculty_id is unknown and you want to use schedule tools."
@@ -72,7 +72,7 @@ async def get_my_schedule(
     },
     timeout=15
 )
-async def get_my_faculties(ctx: Context = CurrentContext()) -> dict:
+async def get_faculties(ctx: Context = CurrentContext()) -> dict:
     try:
         await ctx.info("Fetching user faculties.")
         faculties = await asyncio.to_thread(fetch_user_faculties)
