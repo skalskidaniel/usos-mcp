@@ -6,7 +6,7 @@ Cursor and Claude Desktop. Students authenticate once via OAuth 1.0a, then query
 timetables, calendars, and related academic information through natural language.
 
 Public API:
-- create_mcp: Factory function that builds and returns the FastMCP application.
+- create_server: Factory function that builds and returns the FastMCP application.
 
 Entry points:
 - usos.core:main — primary CLI entry (`uv run server`, `uvx usos-mcp`).
