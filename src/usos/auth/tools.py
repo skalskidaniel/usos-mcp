@@ -23,13 +23,15 @@ from requests_oauthlib import OAuth1Session
     timeout=15
 )
 async def get_oauth_request_token( #TODO rename it
-    base_url: str, #TODO is it necessary?
+    base_url: str,
+    consumer_key: str | None = None,
+    consumer_secret: str | None = None,
     settings: USOSAuthSettings = Depends(get_auth_settings),
     ctx: Context = CurrentContext(),
 ) -> dict:
     
-    c_key = settings.consumer_key
-    c_secret = settings.consumer_secret
+    c_key = consumer_key or settings.consumer_key
+    c_secret = consumer_secret or settings.consumer_secret
     
     if not c_key or not c_secret:
         await ctx.warning("Missing OAuth consumer credentials.")
@@ -66,6 +68,13 @@ async def get_oauth_request_token( #TODO rename it
             await ctx.info("Stored oauth_token_secret in session state.")
         else:
             await ctx.warning("Received empty oauth_token_secret from USOS.")
+            
+        await ctx.set_state("base_url", base_url)
+        if c_key:
+            await ctx.set_state("consumer_key", c_key)
+        if c_secret:
+            await ctx.set_state("consumer_secret", c_secret)
+        await ctx.info("Stored base_url and consumer credentials in session state.")
         
         authorization_url = oauth.authorization_url(authorize_url)
         
@@ -89,19 +98,24 @@ async def get_oauth_request_token( #TODO rename it
     timeout=15
 )
 async def get_oauth_access_token(
-    base_url: str, #TODO is it necessary?
     pin: str,
     settings: USOSAuthSettings = Depends(get_auth_settings),
     ctx: Context = CurrentContext(),
 ) -> dict:
     
-    c_key = settings.consumer_key
-    c_secret = settings.consumer_secret
+    base_url = await ctx.get_state("base_url")
+    if not base_url or not isinstance(base_url, str):
+        await ctx.error("Missing base_url in session state.")
+        raise ToolError(
+            "base_url not found in session state. Run get_oauth_request_token in the same session first."
+        )
+
+    c_key = settings.consumer_key or await ctx.get_state("consumer_key")
+    c_secret = settings.consumer_secret or await ctx.get_state("consumer_secret")
     
-    #TODO improve missing keys handling logic
     if not c_key or not c_secret:
         await ctx.warning("Missing OAuth consumer credentials.")
-        raise ToolError("Consumer key and secret are required. Provide them as arguments or set them in the environment.")
+        raise ToolError("Consumer key and secret are required. Set them in the environment or provide them during get_oauth_request_token.")
 
     oauth_token_secret = await ctx.get_state("oauth_token_secret")
     if not oauth_token_secret:
