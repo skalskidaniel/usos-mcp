@@ -3,8 +3,8 @@ import asyncio
 from fastmcp.dependencies import CurrentContext
 from fastmcp.server.context import Context
 from fastmcp.tools import tool
+from fastmcp.exceptions import ToolError
 from usos.utils import (
-    _error_payload,
     get_semester_date_range,
     resolve_term_id,
     today_str
@@ -46,7 +46,7 @@ async def get_my_schedule(
         }
     except Exception as exc:
         await ctx.error(f"Failed to fetch schedule: {exc}")
-        return _error_payload(exc)
+        raise ToolError(f"Failed to fetch schedule: {exc}") from exc
 
 
 @tool(
@@ -63,7 +63,7 @@ async def get_my_faculties(ctx: Context = CurrentContext()) -> dict:
         return {"count": len(faculties), "faculties": faculties}
     except Exception as exc:
         await ctx.error(f"Failed to fetch faculties: {exc}")
-        return _error_payload(exc)
+        raise ToolError(f"Failed to fetch faculties: {exc}") from exc
 
 
 @tool(
@@ -104,7 +104,7 @@ async def get_days_off(
         }
     except Exception as exc:
         await ctx.error(f"Failed to fetch day-off events: {exc}")
-        return _error_payload(exc)
+        raise ToolError(f"Failed to fetch day-off events: {exc}") from exc
 
 
 @tool(
@@ -157,4 +157,4 @@ async def get_exam_session_dates(
         }
     except Exception as exc:
         await ctx.error(f"Failed to fetch exam session dates: {exc}")
-        return _error_payload(exc)
+        raise ToolError(f"Failed to fetch exam session dates: {exc}") from exc

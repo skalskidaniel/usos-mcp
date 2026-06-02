@@ -19,10 +19,6 @@ from usos.auth.models import USOSAuthSettings
 RETRIABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
-def _error_payload(exc: Exception) -> dict:
-    return {"error": str(exc)}
-
-
 def _get_base_url() -> str:
     settings = USOSAuthSettings()
     if not settings.base_url:

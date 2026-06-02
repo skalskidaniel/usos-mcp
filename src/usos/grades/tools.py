@@ -3,7 +3,8 @@ import asyncio
 from fastmcp.dependencies import CurrentContext
 from fastmcp.server.context import Context
 from fastmcp.tools import tool
-from usos.utils import _error_payload, resolve_term_id, fetch_active_terms
+from fastmcp.exceptions import ToolError
+from usos.utils import resolve_term_id, fetch_active_terms
 from .utils import (
     fetch_grades_by_terms,
     fetch_course_edition_grades,
@@ -100,7 +101,7 @@ async def get_my_grades(
             )
     except Exception as exc:
         await ctx.error(f"Failed to fetch grades: {exc}")
-        return _error_payload(exc)
+        raise ToolError(f"Failed to fetch grades: {exc}") from exc
 
 
 @tool(
@@ -149,4 +150,4 @@ async def calculate_grade_average(
         return result.model_dump()
     except Exception as exc:
         await ctx.error(f"Failed to calculate grade average: {exc}")
-        return _error_payload(exc)
+        raise ToolError(f"Failed to calculate grade average: {exc}") from exc

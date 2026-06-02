@@ -3,6 +3,7 @@ import asyncio
 from fastmcp.dependencies import CurrentContext, Depends
 from fastmcp.server.context import Context
 from fastmcp.tools import tool
+from fastmcp.exceptions import ToolError
 from .models import USOSAuthSettings
 from .utils import get_auth_settings
 from requests_oauthlib import OAuth1Session
@@ -24,7 +25,7 @@ async def get_oauth_request_token( #TODO rename it
     
     if not c_key or not c_secret:
         await ctx.warning("Missing OAuth consumer credentials.")
-        return {"error": "Consumer key and secret are required. Provide them as arguments or set them in the environment."}
+        raise ToolError("Consumer key and secret are required. Provide them as arguments or set them in the environment.")
     
     request_token_url = f"{base_url.rstrip('/')}/services/oauth/request_token"
     authorize_url = f"{base_url.rstrip('/')}/services/oauth/authorize"
@@ -65,7 +66,7 @@ async def get_oauth_request_token( #TODO rename it
         }
     except Exception as e:
         await ctx.error(f"OAuth request token error: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"OAuth request token error: {e}") from e
 
 @tool(
     name="get_oauth_access_token", #TODO rename it
@@ -84,27 +85,27 @@ async def get_oauth_access_token(
     #TODO improve missing keys handling logic
     if not c_key or not c_secret:
         await ctx.warning("Missing OAuth consumer credentials.")
-        return {"error": "Consumer key and secret are required. Provide them as arguments or set them in the environment."}
+        raise ToolError("Consumer key and secret are required. Provide them as arguments or set them in the environment.")
 
     oauth_token_secret = await ctx.get_state("oauth_token_secret")
     if not oauth_token_secret:
         await ctx.error("Missing oauth_token_secret in session state.")
-        return {
-            "error": "oauth_token_secret not found in session state. Run get_oauth_request_token in the same session first."
-        }
+        raise ToolError(
+            "oauth_token_secret not found in session state. Run get_oauth_request_token in the same session first."
+        )
     if not isinstance(oauth_token_secret, str):
         await ctx.error("Invalid oauth_token_secret stored in session state.")
-        return {"error": "oauth_token_secret in session state is invalid."}
+        raise ToolError("oauth_token_secret in session state is invalid.")
     
     oauth_token = await ctx.get_state("oauth_token")
     if not oauth_token:
         await ctx.error("Missing oauth_token in session state.")
-        return {
-            "error": "oauth_token not found in session state. Run get_oauth_request_token in the same session first."
-        }
-    if not isinstance(oauth_token_secret, str):
-        await ctx.error("Invalid oauth_token_secret stored in session state.")
-        return {"error": "oauth_token_secret in session state is invalid."}
+        raise ToolError(
+            "oauth_token not found in session state. Run get_oauth_request_token in the same session first."
+        )
+    if not isinstance(oauth_token, str):
+        await ctx.error("Invalid oauth_token stored in session state.")
+        raise ToolError("oauth_token in session state is invalid.")
     
     access_token_url = f"{base_url.rstrip('/')}/services/oauth/access_token"
 
@@ -129,7 +130,7 @@ async def get_oauth_access_token(
         }
     except Exception as e:
         await ctx.error(f"OAuth access token error: {e}")
-        return {"error": str(e)}
+        raise ToolError(f"OAuth access token error: {e}") from e
 
 @tool(
     name="check_authentication",
@@ -175,7 +176,4 @@ async def check_authentication(
             }
     except Exception as e:
         await ctx.error(f"Authentication check failed: {e}")
-        return {
-            "authenticated": False,
-            "reason": str(e)
-        }
+        raise ToolError(f"Authentication check failed: {e}") from e
