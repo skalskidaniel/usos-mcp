@@ -87,7 +87,7 @@ async def get_faculties(ctx: Context = CurrentContext()) -> dict:
     description=(
         "Find day-off calendar events in a date range. faculty_id is optional and "
         "auto-resolved from the student's profile when omitted. "
-        "Use get_my_faculties if resolution fails."
+        "Use get_faculties if resolution fails."
     ),
     tags={"schedule"},
     annotations={
@@ -136,7 +136,7 @@ async def get_days_off(
     description=(
         "Find exam session calendar events in a selected term. faculty_id is optional and "
         "auto-resolved from the student's profile when omitted. "
-        "Use get_my_faculties if resolution fails."
+        "Use get_faculties if resolution fails."
     ),
     tags={"schedule"},
     annotations={

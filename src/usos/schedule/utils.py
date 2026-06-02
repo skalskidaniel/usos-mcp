@@ -179,7 +179,7 @@ def resolve_faculty_id(faculty_id: str | None) -> str:
 
     raise ValueError(
         "Could not auto-resolve faculty_id from student programmes or employment functions. "
-        "Use get_my_faculties or search_faculties and pass faculty_id explicitly."
+        "Use get_faculties and pass faculty_id explicitly."
     )
 
 

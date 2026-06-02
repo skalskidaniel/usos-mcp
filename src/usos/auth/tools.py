@@ -209,7 +209,7 @@ async def check_login(
         await ctx.info("Missing OAuth credentials or base URL.")
         return {
             "authenticated": False, 
-            "reason": "Missing OAuth credentials or base URL. Run the setup_usos_authentication prompt first."
+            "reason": "Missing OAuth credentials or base URL. Run the authenticate_me prompt first."
         }
     
     try:
