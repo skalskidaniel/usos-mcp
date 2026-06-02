@@ -5,6 +5,7 @@ from pathlib import Path
 from fastmcp import FastMCP
 from fastmcp.server.providers import FileSystemProvider
 from fastmcp.server.lifespan import lifespan
+from fastmcp.server.middleware import Middleware
 
 from .models import ServerSettings
 
@@ -58,13 +59,33 @@ async def app_lifespan(server):
         logger.info("USOS MCP server stopping")
 
 
+class AuthFilterMiddleware(Middleware):
+    async def on_list_tools(self, context, call_next):
+        tools = await call_next(context)
+        from .auth.models import USOSAuthSettings
+        settings = USOSAuthSettings()
+        is_auth = all([
+            settings.consumer_key,
+            settings.consumer_secret,
+            settings.oauth_token,
+            settings.oauth_token_secret,
+            settings.base_url
+        ])
+        if is_auth:
+            return [t for t in tools if "auth" not in (t.tags or set())]
+        else:
+            return [t for t in tools if "auth" in (t.tags or set())]
+
+
 def create_server() -> FastMCP:
     provider = FileSystemProvider(Path(__file__).parent)
-    return FastMCP(
+    mcp = FastMCP(
         "USOS MCP server",
         providers=[provider],
         lifespan=app_lifespan,
     )
+    mcp.add_middleware(AuthFilterMiddleware())
+    return mcp
 
 
 def main() -> None:
