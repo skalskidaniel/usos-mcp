@@ -153,10 +153,29 @@ async def get_oauth_access_token(
             oauth.fetch_access_token,
             access_token_url,
         )
+        
         await ctx.delete_state("oauth_token_secret")
+        await ctx.delete_state("oauth_token")
+        await ctx.delete_state("consumer_key")
+        await ctx.delete_state("consumer_secret")
+        await ctx.delete_state("base_url")
+
+        oauth_token = oauth_tokens.get("oauth_token")
+        oauth_token_secret = oauth_tokens.get("oauth_token_secret")
+
+        from .utils import save_auth_config
+        config_path = await save_auth_config(
+            consumer_key=c_key,
+            consumer_secret=c_secret,
+            base_url=base_url,
+            oauth_token=oauth_token,
+            oauth_token_secret=oauth_token_secret
+        )
+        
+        await ctx.info(f"Saved authentication credentials automatically to {config_path}")
+
         return {
-            "oauth_token": oauth_tokens.get("oauth_token"),
-            "oauth_token_secret": oauth_tokens.get("oauth_token_secret")
+            "message": f"Successfully authenticated! Credentials have been saved locally to {config_path}. The server is now ready and fully authenticated."
         }
     except Exception as e:
         await ctx.error(f"OAuth access token error: {e}")
@@ -186,10 +205,10 @@ async def check_authentication(
         settings.oauth_token_secret,
         settings.base_url
     ]):
-        await ctx.info("Missing OAuth credentials or base URL in environment variables.")
+        await ctx.info("Missing OAuth credentials or base URL.")
         return {
             "authenticated": False, 
-            "reason": "Missing OAuth credentials or base URL in environment variables. Run the setup_usos_authentication prompt first."
+            "reason": "Missing OAuth credentials or base URL. Run the setup_usos_authentication prompt first."
         }
     
     try:
@@ -215,3 +234,51 @@ async def check_authentication(
     except Exception as e:
         await ctx.error(f"Authentication check failed: {e}")
         raise ToolError(f"Authentication check failed: {e}") from e
+
+@tool(
+    name="clear_authentication",
+    description="Log out and delete stored USOS API authentication credentials from the local configuration store.",
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": True,
+        "openWorldHint": True
+    },
+    timeout=10
+)
+async def clear_authentication(
+    ctx: Context = CurrentContext()
+) -> dict:
+    from .models import get_storage_dir
+    from key_value.aio.stores.filetree import (
+        FileTreeStore,
+        FileTreeV1KeySanitizationStrategy,
+        FileTreeV1CollectionSanitizationStrategy,
+    )
+    
+    storage_dir = get_storage_dir()
+    store = FileTreeStore(
+        data_directory=storage_dir,
+        key_sanitization_strategy=FileTreeV1KeySanitizationStrategy(storage_dir),
+        collection_sanitization_strategy=FileTreeV1CollectionSanitizationStrategy(storage_dir),
+    )
+    
+    credentials_file = storage_dir / "auth" / "credentials.json"
+    if credentials_file.exists():
+        try:
+            await store.delete("credentials", collection="auth")
+            await ctx.info(f"Deleted credentials from local storage at {credentials_file}")
+            return {
+                "success": True,
+                "message": "Authentication credentials cleared successfully. You are now logged out."
+            }
+        except Exception as e:
+            await ctx.error(f"Failed to delete credentials: {e}")
+            raise ToolError(f"Failed to clear authentication: {e}")
+    else:
+        return {
+            "success": True,
+            "message": "No stored credentials found in local configuration store."
+        }
+
+

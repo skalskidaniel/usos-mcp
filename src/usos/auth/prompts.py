@@ -15,13 +15,6 @@ def setup_usos_authentication() -> str:
         "6. Provide the `authorize_url` to the user and instruct them to click the link, log in if prompted, authorize the app, and retrieve the PIN shown on the confirmation page.",
         "7. Wait for the user to provide the PIN.",
         "8. Once the user provides the PIN, use the `get_oauth_access_token` tool with only the provided `pin`. The `base_url`, `consumer_key`, and `consumer_secret` are retrieved automatically from the session context state set in step 5.",
-        "9. Present the user with a JSON snippet containing their final environment variables to add to their MCP client configuration (e.g. `mcp.json` or Claude Desktop config):",
-        '   "env": {',
-        '     "USOS_API_CONSUMER_KEY": "<their consumer key>",',
-        '     "USOS_API_CONSUMER_SECRET": "<their consumer secret>",',
-        '     "USOS_API_BASE_URL": "<base_url found in step 2>",',
-        '     "USOS_API_OAUTH_TOKEN": "<oauth_token from step 8>",',
-        '     "USOS_API_OAUTH_TOKEN_SECRET": "<oauth_token_secret from step 8>"',
-        '   }',
-        "10. Remind the user that these values grant access to their USOS data and should be kept private. Explain that after saving these configuration values, they need to restart their MCP client (e.g. Cursor) so that the server can authenticate automatically."
+        "9. Inform the user that the authentication is complete and explain that their credentials have been saved automatically to the local config file (~/.config/usos-mcp/config.json). Describe that they can customize this location using the `USOS_API_CONFIG_PATH` environment variable if desired.",
+        "10. Confirm that the server is now fully authenticated and that all other MCP tools are now active and ready for use. Mention that they do not need to restart their MCP client or do any manual configuration. Remind the user that if they ever want to sign out, they can use the `clear_authentication` tool."
     ])
