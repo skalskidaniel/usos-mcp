@@ -220,6 +220,36 @@ def fetch_calendar_events(
     return events
 
 
+def flatten_calendar_event(event: dict[str, Any]) -> dict[str, Any]:
+    name = event.get("name")
+    name_str = None
+    if name:
+        if isinstance(name, str):
+            name_str = name
+        elif isinstance(name, dict):
+            name_str = (
+                name.get("en")
+                or name.get("pl")
+                or next(iter(name.values()), None)
+            )
+
+    start_date = event.get("start_date")
+    if isinstance(start_date, str) and " " in start_date:
+        start_date = start_date.split(" ")[0]
+    end_date = event.get("end_date")
+    if isinstance(end_date, str) and " " in end_date:
+        end_date = end_date.split(" ")[0]
+
+    return {
+        "id": event.get("id"),
+        "name": name_str,
+        "start_date": start_date,
+        "end_date": end_date,
+        "type": event.get("type"),
+        "is_day_off": bool(event.get("is_day_off")),
+    }
+
+
 
 
 

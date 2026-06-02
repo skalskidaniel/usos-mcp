@@ -11,11 +11,13 @@ from usos.utils import (
 )
 
 
+from .models import CalendarEvent
 from .utils import (
     fetch_calendar_events,
     fetch_user_faculties,
     fetch_student_schedule,
-    resolve_faculty_id
+    resolve_faculty_id,
+    flatten_calendar_event,
 )
 
 
@@ -94,13 +96,11 @@ async def get_days_off(
             event for event in events if bool(event.get("is_day_off"))
         ]
         days_off.sort(key=lambda item: str(item.get("start_date", "")))
+        
+        flat_days_off = [flatten_calendar_event(e) for e in days_off]
         return {
             "faculty_id": resolved_faculty_id,
-            "resolved_faculty_id": resolved_faculty_id,
-            "start_date": start_date,
-            "end_date": end_date,
-            "count": len(days_off),
-            "events": days_off,
+            "days_off": [CalendarEvent(**e) for e in flat_days_off],
         }
     except Exception as exc:
         await ctx.error(f"Failed to fetch day-off events: {exc}")
@@ -148,14 +148,12 @@ async def get_exam_session_dates(
             for event in exam_sessions
         }.values())
         exam_sessions.sort(key=lambda item: str(item.get("start_date", "")))
+        
+        flat_exams = [flatten_calendar_event(e) for e in exam_sessions]
         return {
             "faculty_id": resolved_faculty_id,
-            "resolved_faculty_id": resolved_faculty_id,
             "term_id": resolved_term_id,
-            "start_date": start_date,
-            "end_date": end_date,
-            "count": len(exam_sessions),
-            "events": exam_sessions,
+            "exam_sessions": [CalendarEvent(**e) for e in flat_exams],
         }
     except Exception as exc:
         await ctx.error(f"Failed to fetch exam session dates: {exc}")
