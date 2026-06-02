@@ -8,11 +8,10 @@ from .models import USOSAuthSettings
 from .utils import get_auth_settings
 from requests_oauthlib import OAuth1Session
 
-#TODO adjust descriptions
 
 @tool(
-    name="get_oauth_request_token",
-    description="Step 1 of OAuth 1.0a: Get the request token and authorize URL. Returns oauth_token, oauth_token_secret, and authorize_url. The oauth_token_secret is also stored in session state for step 2.",
+    name="authenticate",
+    description="Interactive step-by-step authentication tool. Run this tool with no parameters first to start.",
     tags={"auth"},
     annotations={
         "readOnlyHint": False,
@@ -22,164 +21,166 @@ from requests_oauthlib import OAuth1Session
     },
     timeout=15
 )
-async def get_oauth_request_token( #TODO rename it
-    base_url: str,
+async def authenticate(
+    base_url: str | None = None,
     consumer_key: str | None = None,
     consumer_secret: str | None = None,
-    settings: USOSAuthSettings = Depends(get_auth_settings),
+    pin: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
-    
-    c_key = consumer_key or settings.consumer_key
-    c_secret = consumer_secret or settings.consumer_secret
-    
-    if not c_key or not c_secret:
-        await ctx.warning("Missing OAuth consumer credentials.")
-        raise ToolError("Consumer key and secret are required. Provide them as arguments or set them in the environment.")
-    
-    request_token_url = f"{base_url.rstrip('/')}/services/oauth/request_token"
-    authorize_url = f"{base_url.rstrip('/')}/services/oauth/authorize"
+    current_step = await ctx.get_state("auth_step")
 
-    oauth = OAuth1Session(
-        client_key=c_key, 
-        client_secret=c_secret, 
-        callback_uri="oob"
-    )
-    
-    try:
-        await ctx.info("Requesting OAuth request token.")
-        scopes = "studies|grades|offline_access"
-        fetch_response = await asyncio.to_thread(
-            oauth.fetch_request_token,
-            f"{request_token_url}?scopes={scopes}",
-        )
+    if current_step not in ["AWAITING_BASE_URL", "AWAITING_APP_REGISTRATION", "AWAITING_PIN"]:
+        await ctx.set_state("auth_step", "AWAITING_BASE_URL")
+        return {
+            "status": "AWAITING_BASE_URL",
+            "message": "Please ask the user for their university name. Read the resource `usos://universities/supported` to find the correct `base_url` for that university, then call me again passing `base_url`."
+        }
+
+    if current_step == "AWAITING_BASE_URL":
+        if not base_url:
+            return ToolError({
+                "status": "AWAITING_BASE_URL",
+                "message": "Error: `base_url` is required for this step. Please provide the matched `base_url`."
+            })
         
-        resource_owner_key = fetch_response.get("oauth_token")
-        resource_owner_secret = fetch_response.get("oauth_token_secret")
+        await ctx.set_state("auth_base_url", base_url)
+        await ctx.set_state("auth_step", "AWAITING_APP_REGISTRATION")
         
-        if resource_owner_key:
-            await ctx.set_state("oauth_token", resource_owner_key)
-            await ctx.info("Stored oauth_token in session state")
-        else:
-            await ctx.warning("Received empty oauth_token_secret from USOS")
-        
-        if resource_owner_secret:
-            await ctx.set_state("oauth_token_secret", resource_owner_secret)
-            await ctx.info("Stored oauth_token_secret in session state.")
-        else:
-            await ctx.warning("Received empty oauth_token_secret from USOS.")
+        return {
+            "status": "AWAITING_APP_REGISTRATION",
+            "base_url": base_url,
+            "message": (
+                f"Please instruct the user to visit '{base_url.rstrip('/')}/developers' to register "
+                "a new application, and retrieve the `Consumer Key` and `Consumer Secret`. "
+                "Once they provide them, call me again passing `consumer_key` and `consumer_secret`."
+            )
+        }
+
+    if current_step == "AWAITING_APP_REGISTRATION":
+        if not consumer_key or not consumer_secret:
+            return ToolError({
+                "status": "AWAITING_APP_REGISTRATION",
+                "message": "Error: Both `consumer_key` and `consumer_secret` are required for this step."
+            })
             
-        await ctx.set_state("base_url", base_url)
-        if c_key:
-            await ctx.set_state("consumer_key", c_key)
-        if c_secret:
-            await ctx.set_state("consumer_secret", c_secret)
-        await ctx.info("Stored base_url and consumer credentials in session state.")
-        
-        authorization_url = oauth.authorization_url(authorize_url)
-        
-        return {
-            "authorize_url": authorization_url
-        }
-    except Exception as e:
-        await ctx.error(f"OAuth request token error: {e}")
-        raise ToolError(f"OAuth request token error: {e}") from e
+        stored_base_url = await ctx.get_state("auth_base_url")
+        if not stored_base_url or not isinstance(stored_base_url, str):
+            await ctx.set_state("auth_step", "AWAITING_BASE_URL")
+            return ToolError({
+                "status": "AWAITING_BASE_URL",
+                "message": "Session expired or base_url missing. Please start over by providing `base_url`."
+            })
 
-@tool(
-    name="get_oauth_access_token", #TODO rename it
-    description="Step 2 of OAuth 1.0a: Exchange the request token and PIN for a persistent access token. Reads oauth_token_secret from session state.",
-    tags={"auth"},
-    annotations={
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": False,
-        "openWorldHint": True,
-    },
-    timeout=15
-)
-async def get_oauth_access_token(
-    pin: str,
-    settings: USOSAuthSettings = Depends(get_auth_settings),
-    ctx: Context = CurrentContext(),
-) -> dict:
-    
-    base_url = await ctx.get_state("base_url")
-    if not base_url or not isinstance(base_url, str):
-        await ctx.error("Missing base_url in session state.")
-        raise ToolError(
-            "base_url not found in session state. Run get_oauth_request_token in the same session first."
-        )
+        request_token_url = f"{stored_base_url.rstrip('/')}/services/oauth/request_token"
+        authorize_url = f"{stored_base_url.rstrip('/')}/services/oauth/authorize"
 
-    c_key = settings.consumer_key or await ctx.get_state("consumer_key")
-    c_secret = settings.consumer_secret or await ctx.get_state("consumer_secret")
-    
-    if not c_key or not c_secret:
-        await ctx.warning("Missing OAuth consumer credentials.")
-        raise ToolError("Consumer key and secret are required. Set them in the environment or provide them during get_oauth_request_token.")
-
-    oauth_token_secret = await ctx.get_state("oauth_token_secret")
-    if not oauth_token_secret:
-        await ctx.error("Missing oauth_token_secret in session state.")
-        raise ToolError(
-            "oauth_token_secret not found in session state. Run get_oauth_request_token in the same session first."
-        )
-    if not isinstance(oauth_token_secret, str):
-        await ctx.error("Invalid oauth_token_secret stored in session state.")
-        raise ToolError("oauth_token_secret in session state is invalid.")
-    
-    oauth_token = await ctx.get_state("oauth_token")
-    if not oauth_token:
-        await ctx.error("Missing oauth_token in session state.")
-        raise ToolError(
-            "oauth_token not found in session state. Run get_oauth_request_token in the same session first."
-        )
-    if not isinstance(oauth_token, str):
-        await ctx.error("Invalid oauth_token stored in session state.")
-        raise ToolError("oauth_token in session state is invalid.")
-    
-    access_token_url = f"{base_url.rstrip('/')}/services/oauth/access_token"
-
-    oauth = OAuth1Session(
-        client_key=c_key,
-        client_secret=c_secret,
-        resource_owner_key=oauth_token,
-        resource_owner_secret=oauth_token_secret,
-        verifier=pin
-    )
-
-    try:
-        await ctx.info("Requesting OAuth access token.")
-        oauth_tokens = await asyncio.to_thread(
-            oauth.fetch_access_token,
-            access_token_url,
+        oauth = OAuth1Session(
+            client_key=consumer_key, 
+            client_secret=consumer_secret, 
+            callback_uri="oob"
         )
         
-        await ctx.delete_state("oauth_token_secret")
-        await ctx.delete_state("oauth_token")
-        await ctx.delete_state("consumer_key")
-        await ctx.delete_state("consumer_secret")
-        await ctx.delete_state("base_url")
+        try:
+            await ctx.info("Requesting OAuth request token.")
+            scopes = "studies|grades|offline_access"
+            fetch_response = await asyncio.to_thread(
+                oauth.fetch_request_token,
+                f"{request_token_url}?scopes={scopes}",
+            )
+            
+            resource_owner_key = fetch_response.get("oauth_token")
+            resource_owner_secret = fetch_response.get("oauth_token_secret")
+            
+            if not resource_owner_key or not resource_owner_secret:
+                raise ToolError("Failed to retrieve valid request tokens from USOS API.")
+                
+            await ctx.set_state("oauth_token", resource_owner_key)
+            await ctx.set_state("oauth_token_secret", resource_owner_secret)
+            await ctx.set_state("consumer_key", consumer_key)
+            await ctx.set_state("consumer_secret", consumer_secret)
+            await ctx.set_state("auth_step", "AWAITING_PIN")
+            
+            authorization_url = oauth.authorization_url(authorize_url)
+            
+            return {
+                "status": "AWAITING_PIN",
+                "authorize_url": authorization_url,
+                "message": (
+                    f"Please provide this authorization URL to the user: {authorization_url}\n"
+                    "Ask them to log in, authorize the application, and paste the resulting PIN code back to you. "
+                    "Once you have the PIN, call me again passing `pin`."
+                )
+            }
+        except Exception as e:
+            await ctx.error(f"OAuth request token error: {e}")
+            raise ToolError(f"OAuth request token error: {e}") from e
 
-        oauth_token = oauth_tokens.get("oauth_token")
-        oauth_token_secret = oauth_tokens.get("oauth_token_secret")
-
-        from .utils import save_auth_config
-        config_path = await save_auth_config(
-            consumer_key=c_key,
-            consumer_secret=c_secret,
-            base_url=base_url,
-            oauth_token=oauth_token,
-            oauth_token_secret=oauth_token_secret
-        )
+    if current_step == "AWAITING_PIN":
+        if not pin:
+            return ToolError({
+                "status": "AWAITING_PIN",
+                "message": "Error: `pin` is required for this step."
+            })
+            
+        stored_base_url = await ctx.get_state("auth_base_url")
+        c_key = await ctx.get_state("consumer_key")
+        c_secret = await ctx.get_state("consumer_secret")
+        oauth_token = await ctx.get_state("oauth_token")
+        oauth_token_secret = await ctx.get_state("oauth_token_secret")
         
-        await ctx.info(f"Saved authentication credentials automatically to {config_path}")
+        if not all([stored_base_url, c_key, c_secret, oauth_token, oauth_token_secret]):
+            await ctx.set_state("auth_step", "AWAITING_BASE_URL")
+            return ToolError({
+                "status": "AWAITING_BASE_URL",
+                "message": "Session state lost or expired. Please start over by providing `base_url`."
+            })
+            
+        access_token_url = f"{stored_base_url.rstrip('/')}/services/oauth/access_token"
 
-        return {
-            "message": f"Successfully authenticated! Credentials have been saved locally to {config_path}. The server is now ready and fully authenticated."
-        }
-    except Exception as e:
-        await ctx.error(f"OAuth access token error: {e}")
-        raise ToolError(f"OAuth access token error: {e}") from e
+        oauth = OAuth1Session(
+            client_key=c_key,
+            client_secret=c_secret,
+            resource_owner_key=oauth_token,
+            resource_owner_secret=oauth_token_secret,
+            verifier=pin
+        )
+
+        try:
+            await ctx.info("Requesting OAuth access token.")
+            oauth_tokens = await asyncio.to_thread(
+                oauth.fetch_access_token,
+                access_token_url,
+            )
+            
+            await ctx.delete_state("oauth_token_secret")
+            await ctx.delete_state("oauth_token")
+            await ctx.delete_state("consumer_key")
+            await ctx.delete_state("consumer_secret")
+            await ctx.delete_state("auth_base_url")
+            await ctx.delete_state("auth_step")
+
+            oauth_token = oauth_tokens.get("oauth_token")
+            oauth_token_secret = oauth_tokens.get("oauth_token_secret")
+
+            from .utils import save_auth_config
+            config_path = await save_auth_config(
+                consumer_key=c_key,
+                consumer_secret=c_secret,
+                base_url=stored_base_url,
+                oauth_token=oauth_token,
+                oauth_token_secret=oauth_token_secret
+            )
+            
+            await ctx.info(f"Saved authentication credentials automatically to {config_path}")
+
+            return {
+                "status": "SUCCESS",
+                "message": f"Successfully authenticated! Credentials have been saved locally to {config_path}. The server is now ready and fully authenticated."
+            }
+        except Exception as e:
+            await ctx.error(f"OAuth access token error: {e}")
+            raise ToolError(f"OAuth access token error: {e}") from e
 
 @tool(
     name="check_authentication",
@@ -226,11 +227,11 @@ async def check_authentication(
                 "user": f"{user_data.get('first_name')} {user_data.get('last_name')}"
             }
         else:
-            return {
+            return ToolError({
                 "authenticated": False,
                 "reason": f"API returned status {response.status_code}",
                 "details": response.text
-            }
+            })
     except Exception as e:
         await ctx.error(f"Authentication check failed: {e}")
         raise ToolError(f"Authentication check failed: {e}") from e
@@ -256,6 +257,13 @@ async def clear_authentication(
         FileTreeV1CollectionSanitizationStrategy,
     )
     
+    await ctx.delete_state("oauth_token_secret")
+    await ctx.delete_state("oauth_token")
+    await ctx.delete_state("consumer_key")
+    await ctx.delete_state("consumer_secret")
+    await ctx.delete_state("auth_base_url")
+    await ctx.delete_state("auth_step")
+
     storage_dir = get_storage_dir()
     store = FileTreeStore(
         data_directory=storage_dir,
@@ -280,5 +288,3 @@ async def clear_authentication(
             "success": True,
             "message": "No stored credentials found in local configuration store."
         }
-
-

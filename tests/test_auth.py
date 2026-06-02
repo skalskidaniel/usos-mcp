@@ -9,7 +9,27 @@ from unittest.mock import patch, MagicMock
 # Import model helpers
 from usos.auth.models import USOSAuthSettings, get_storage_dir
 from usos.auth.utils import save_auth_config
-from usos.auth.tools import clear_authentication
+from usos.auth.tools import authenticate, clear_authentication
+
+
+class MockContext:
+    def __init__(self):
+        self.state = {}
+
+    async def get_state(self, key):
+        return self.state.get(key)
+
+    async def set_state(self, key, value):
+        self.state[key] = value
+
+    async def delete_state(self, key):
+        self.state.pop(key, None)
+
+    async def info(self, msg):
+        pass
+
+    async def error(self, msg):
+        pass
 
 
 class TestAuthConfig(unittest.TestCase):
@@ -97,6 +117,72 @@ class TestAuthConfig(unittest.TestCase):
         self.assertEqual(value["oauth_token"], "save_token")
         self.assertEqual(value["oauth_token_secret"], "save_token_secret")
 
+    def test_authenticate_state_machine_flow(self):
+        ctx = MockContext()
+
+        # Step 1: Initialize (no parameters)
+        res = asyncio.run(authenticate(ctx=ctx))
+        self.assertEqual(res["status"], "AWAITING_BASE_URL")
+        self.assertEqual(asyncio.run(ctx.get_state("auth_step")), "AWAITING_BASE_URL")
+
+        # Step 2: Provide base_url
+        res = asyncio.run(authenticate(base_url="https://usos.uw.edu.pl", ctx=ctx))
+        self.assertEqual(res["status"], "AWAITING_APP_REGISTRATION")
+        self.assertEqual(asyncio.run(ctx.get_state("auth_base_url")), "https://usos.uw.edu.pl")
+        self.assertEqual(asyncio.run(ctx.get_state("auth_step")), "AWAITING_APP_REGISTRATION")
+
+        # Step 3: Provide consumer credentials
+        with patch("usos.auth.tools.OAuth1Session") as mock_oauth_cls:
+            mock_oauth = MagicMock()
+            mock_oauth.fetch_request_token.return_value = {
+                "oauth_token": "req_token",
+                "oauth_token_secret": "req_secret"
+            }
+            mock_oauth.authorization_url.return_value = "https://usos.uw.edu.pl/authorize?oauth_token=req_token"
+            mock_oauth_cls.return_value = mock_oauth
+
+            res = asyncio.run(authenticate(
+                consumer_key="my_key",
+                consumer_secret="my_secret",
+                ctx=ctx
+            ))
+
+        self.assertEqual(res["status"], "AWAITING_PIN")
+        self.assertEqual(res["authorize_url"], "https://usos.uw.edu.pl/authorize?oauth_token=req_token")
+        self.assertEqual(asyncio.run(ctx.get_state("auth_step")), "AWAITING_PIN")
+        self.assertEqual(asyncio.run(ctx.get_state("oauth_token")), "req_token")
+        self.assertEqual(asyncio.run(ctx.get_state("oauth_token_secret")), "req_secret")
+        self.assertEqual(asyncio.run(ctx.get_state("consumer_key")), "my_key")
+        self.assertEqual(asyncio.run(ctx.get_state("consumer_secret")), "my_secret")
+
+        # Step 4: Provide PIN
+        with patch("usos.auth.tools.OAuth1Session") as mock_oauth_cls:
+            mock_oauth = MagicMock()
+            mock_oauth.fetch_access_token.return_value = {
+                "oauth_token": "access_token",
+                "oauth_token_secret": "access_secret"
+            }
+            mock_oauth_cls.return_value = mock_oauth
+
+            res = asyncio.run(authenticate(pin="123456", ctx=ctx))
+
+        self.assertEqual(res["status"], "SUCCESS")
+
+        # Session state should be cleaned up
+        self.assertIsNone(asyncio.run(ctx.get_state("auth_step")))
+        self.assertIsNone(asyncio.run(ctx.get_state("auth_base_url")))
+
+        # Check credentials saved to FileTreeStore location
+        self.assertTrue(self.config_file_path.exists())
+        with open(self.config_file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        value = data["value"]
+        self.assertEqual(value["consumer_key"], "my_key")
+        self.assertEqual(value["consumer_secret"], "my_secret")
+        self.assertEqual(value["base_url"], "https://usos.uw.edu.pl")
+        self.assertEqual(value["oauth_token"], "access_token")
+        self.assertEqual(value["oauth_token_secret"], "access_secret")
+
     def test_clear_authentication_deletes_file(self):
         asyncio.run(save_auth_config(
             consumer_key="save_key",
@@ -107,14 +193,15 @@ class TestAuthConfig(unittest.TestCase):
         ))
         self.assertTrue(self.config_file_path.exists())
 
-        mock_ctx = MagicMock()
-        mock_ctx.info = unittest.mock.AsyncMock()
+        ctx = MockContext()
+        asyncio.run(ctx.set_state("auth_step", "AWAITING_PIN"))
 
-        result = asyncio.run(clear_authentication(ctx=mock_ctx))
+        result = asyncio.run(clear_authentication(ctx=ctx))
         self.assertTrue(result["success"])
         self.assertFalse(self.config_file_path.exists())
+        # Verify context state got cleared as well
+        self.assertIsNone(asyncio.run(ctx.get_state("auth_step")))
 
 
 if __name__ == "__main__":
     unittest.main()
-
