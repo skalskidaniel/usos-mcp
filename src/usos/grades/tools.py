@@ -10,8 +10,11 @@ from .utils import (
     fetch_latest_grades,
     fetch_user_ects_points,
     compute_weighted_average,
+    flatten_term_grades,
+    flatten_course_edition_grades,
+    flatten_latest_grades,
 )
-from .models import GradeAverage
+from .models import GradeAverage, GradeEntry
 
 
 @tool(
@@ -38,10 +41,11 @@ async def get_my_grades(
             await ctx.info("Fetching grades for term.")
             resolved_term = await asyncio.to_thread(resolve_term_id, term_id)
             grades = await asyncio.to_thread(fetch_grades_by_terms, [resolved_term])
+            flat_grades = flatten_term_grades(grades)
             return {
                 "mode": mode,
                 "term_id": resolved_term,
-                "grades": grades,
+                "grades": [GradeEntry(**g) for g in flat_grades],
             }
         elif mode == "course":
             if not course_id:
@@ -53,11 +57,12 @@ async def get_my_grades(
                 course_id,
                 resolved_term,
             )
+            flat_grades = flatten_course_edition_grades(grades, course_id, resolved_term)
             return {
                 "mode": mode,
                 "course_id": course_id,
                 "term_id": resolved_term,
-                "grades": grades,
+                "grades": [GradeEntry(**g) for g in flat_grades],
             }
         elif mode == "latest":
             if days is None:
@@ -68,10 +73,11 @@ async def get_my_grades(
                 raise ValueError("days must be not greater than 107")
             await ctx.info("Fetching latest grades.")
             grades = await asyncio.to_thread(fetch_latest_grades, days)
+            flat_grades = flatten_latest_grades(grades)
             return {
                 "mode": mode,
                 "days": days,
-                "grades": grades,
+                "grades": [GradeEntry(**g) for g in flat_grades],
             }
         elif mode == "all":
             await ctx.info("Fetching grades for all terms.")
@@ -82,10 +88,11 @@ async def get_my_grades(
             resolved_terms.sort()
             
             grades = await asyncio.to_thread(fetch_grades_by_terms, resolved_terms)
+            flat_grades = flatten_term_grades(grades)
             return {
                 "mode": mode,
                 "term_ids": resolved_terms,
-                "grades": grades,
+                "grades": [GradeEntry(**g) for g in flat_grades],
             }
         else:
             raise ValueError(

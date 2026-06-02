@@ -236,3 +236,192 @@ def compute_weighted_average(
         average = round(total_grade_points / total_ects, 2)
 
     return average, total_ects, grades_counted, grades_skipped
+
+
+def _parse_grade_entry(
+    g: dict[str, Any],
+    course_id: str,
+    term_id: str | None = None,
+    grade_type: str = "unit",
+    unit_id: str | None = None,
+    course_name: str | None = None,
+) -> dict[str, Any]:
+    val_desc = g.get("value_description")
+    desc_str = None
+    if val_desc:
+        if isinstance(val_desc, str):
+            desc_str = val_desc
+        elif isinstance(val_desc, dict):
+            desc_str = val_desc.get("en") or val_desc.get("pl") or next(iter(val_desc.values()), None)
+
+    sess_num = g.get("exam_session_number")
+    try:
+        sess_num = int(sess_num) if sess_num is not None else 1
+    except ValueError:
+        sess_num = 1
+
+    date_mod = g.get("date_modified")
+    if isinstance(date_mod, str) and len(date_mod) >= 16:
+        date_mod = date_mod[:16]
+
+    comment = g.get("comment")
+    if not comment or not isinstance(comment, str) or not comment.strip():
+        comment = None
+    else:
+        comment = comment.strip()
+
+    return {
+        "course_id": course_id,
+        "course_name": course_name,
+        "term_id": term_id,
+        "type": grade_type,
+        "unit_id": unit_id,
+        "value_symbol": g.get("value_symbol"),
+        "value_description": desc_str,
+        "passes": _parse_bool(g.get("passes")),
+        "counts_into_average": _parse_bool(g.get("counts_into_average")),
+        "exam_session_number": sess_num,
+        "grade_type_id": g.get("grade_type_id"),
+        "date_modified": date_mod,
+        "comment": comment,
+    }
+
+
+def flatten_term_grades(data: dict[str, Any]) -> list[dict[str, Any]]:
+    flat = []
+    if not isinstance(data, dict):
+        return flat
+
+    for term_id, courses in data.items():
+        if not isinstance(courses, dict):
+            continue
+        for course_id, course_edition in courses.items():
+            if not isinstance(course_edition, dict):
+                continue
+
+            course_grades = course_edition.get("course_grades") or []
+            if isinstance(course_grades, list):
+                for g in course_grades:
+                    if isinstance(g, dict):
+                        flat.append(
+                            _parse_grade_entry(
+                                g,
+                                course_id=course_id,
+                                term_id=term_id,
+                                grade_type="course",
+                            )
+                        )
+            elif isinstance(course_grades, dict):
+                for g in course_grades.values():
+                    if isinstance(g, dict):
+                        flat.append(
+                            _parse_grade_entry(
+                                g,
+                                course_id=course_id,
+                                term_id=term_id,
+                                grade_type="course",
+                            )
+                        )
+
+            course_units_grades = course_edition.get("course_units_grades") or {}
+            if isinstance(course_units_grades, dict):
+                for unit_id, unit_grades in course_units_grades.items():
+                    if isinstance(unit_grades, list):
+                        for attempt_dict in unit_grades:
+                            if isinstance(attempt_dict, dict):
+                                for g in attempt_dict.values():
+                                    if isinstance(g, dict):
+                                        flat.append(
+                                            _parse_grade_entry(
+                                                g,
+                                                course_id=course_id,
+                                                term_id=term_id,
+                                                grade_type="unit",
+                                                unit_id=unit_id,
+                                            )
+                                        )
+    return flat
+
+
+def flatten_course_edition_grades(
+    course_edition: dict[str, Any], course_id: str, term_id: str
+) -> list[dict[str, Any]]:
+    flat = []
+    if not isinstance(course_edition, dict):
+        return flat
+
+    course_grades = course_edition.get("course_grades") or []
+    if isinstance(course_grades, list):
+        for g in course_grades:
+            if isinstance(g, dict):
+                flat.append(
+                    _parse_grade_entry(
+                        g,
+                        course_id=course_id,
+                        term_id=term_id,
+                        grade_type="course",
+                    )
+                )
+    elif isinstance(course_grades, dict):
+        for g in course_grades.values():
+            if isinstance(g, dict):
+                flat.append(
+                    _parse_grade_entry(
+                        g,
+                        course_id=course_id,
+                        term_id=term_id,
+                        grade_type="course",
+                    )
+                )
+
+    course_units_grades = course_edition.get("course_units_grades") or {}
+    if isinstance(course_units_grades, dict):
+        for unit_id, unit_grades in course_units_grades.items():
+            if isinstance(unit_grades, list):
+                for attempt_dict in unit_grades:
+                    if isinstance(attempt_dict, dict):
+                        for g in attempt_dict.values():
+                            if isinstance(g, dict):
+                                flat.append(
+                                    _parse_grade_entry(
+                                        g,
+                                        course_id=course_id,
+                                        term_id=term_id,
+                                        grade_type="unit",
+                                        unit_id=unit_id,
+                                    )
+                                )
+    return flat
+
+
+def flatten_latest_grades(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    flat = []
+    if not isinstance(data, list):
+        return flat
+    for g in data:
+        if not isinstance(g, dict):
+            continue
+        course_edition = g.get("course_edition") or {}
+        course_id = course_edition.get("course_id") or "UNKNOWN"
+        course_name = course_edition.get("course_name")
+        course_name_str = None
+        if course_name:
+            if isinstance(course_name, str):
+                course_name_str = course_name
+            elif isinstance(course_name, dict):
+                course_name_str = (
+                    course_name.get("en")
+                    or course_name.get("pl")
+                    or next(iter(course_name.values()), None)
+                )
+
+        flat.append(
+            _parse_grade_entry(
+                g,
+                course_id=course_id,
+                course_name=course_name_str,
+                term_id=None,
+                grade_type="unit",
+            )
+        )
+    return flat
