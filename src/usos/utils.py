@@ -146,8 +146,30 @@ def resolve_term_id(term_id: str | None) -> str:
     active_terms = fetch_active_terms()
     if not active_terms:
         raise ValueError("No active terms found in this USOS installation.")
-    first = active_terms[0]
-    resolved = first.get("id")
-    if not isinstance(resolved, str) or not resolved:
-        raise ValueError("Active term data does not include a valid term id.")
-    return resolved
+
+    today = date.today()
+    matching_terms = []
+    for term in active_terms:
+        t_id = term.get("id")
+        start_str = term.get("start_date")
+        finish_str = term.get("finish_date") or term.get("end_date")
+        if isinstance(t_id, str) and t_id and isinstance(start_str, str) and isinstance(finish_str, str):
+            try:
+                start_d = _parse_date(start_str)
+                finish_d = _parse_date(finish_str)
+                if start_d <= today <= finish_d:
+                    duration = (finish_d - start_d).days
+                    matching_terms.append((duration, t_id))
+            except ValueError:
+                continue
+
+    if matching_terms:
+        matching_terms.sort()
+        return matching_terms[0][1]
+
+    for term in active_terms:
+        resolved = term.get("id")
+        if isinstance(resolved, str) and resolved:
+            return resolved
+
+    raise ValueError("Active term data does not include a valid term id.")
