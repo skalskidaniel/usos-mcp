@@ -24,6 +24,13 @@ from .utils import (
 @tool(
     name="get_my_schedule",
     description="Fetch the authenticated student's timetable for a selected date window (1-7 days).",
+    tags={"schedule"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": True,
+        "destructiveHint": False,
+        "idempotentHint": False
+    },
 )
 async def get_my_schedule(
     start_date: str | None = None,
@@ -55,6 +62,13 @@ async def get_my_schedule(
         "List faculties linked to the authenticated student's active programmes. "
         "Use ONLY when faculty_id is unknown and you want to use schedule tools."
     ),
+    tags={"schedule"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True
+    },
 )
 async def get_my_faculties(ctx: Context = CurrentContext()) -> dict:
     try:
@@ -73,6 +87,13 @@ async def get_my_faculties(ctx: Context = CurrentContext()) -> dict:
         "auto-resolved from the student's profile when omitted. "
         "Use get_my_faculties if resolution fails."
     ),
+    tags={"schedule"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": True,
+        "idempotentHint": False,
+        "destructiveHint": False
+    },
 )
 async def get_days_off(
     start_date: str,
@@ -114,6 +135,13 @@ async def get_days_off(
         "auto-resolved from the student's profile when omitted. "
         "Use get_my_faculties if resolution fails."
     ),
+    tags={"schedule"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": True,
+        "destructiveHint": False,
+        "idempotentHint": False
+    },
 )
 async def get_exam_session_dates(
     term_id: str | None = None,

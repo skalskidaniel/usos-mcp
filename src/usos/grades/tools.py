@@ -28,6 +28,13 @@ from .models import GradeAverage, GradeEntry
         "'latest' — recently modified grades (last N days); "
         "'all' (default) — grades from all academic terms overall."
     ),
+    tags={"grades"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": True,
+        "destructiveHint": False,
+        "idempotentHint": False
+    },
 )
 async def get_my_grades(
     mode: str = "all",
@@ -111,6 +118,13 @@ async def get_my_grades(
         "By default uses all academic terms from the student's study history. "
         "Pass term_ids to filter by specific terms."
     ),
+    tags={"grades"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": True,
+        "destructiveHint": False,
+        "idempotentHint": False
+    },
 )
 async def calculate_grade_average(
     term_ids: list[str] | None = None,

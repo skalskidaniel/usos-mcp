@@ -12,7 +12,14 @@ from requests_oauthlib import OAuth1Session
 
 @tool(
     name="get_oauth_request_token",
-    description="Step 1 of OAuth 1.0a: Get the request token and authorize URL. Returns oauth_token, oauth_token_secret, and authorize_url. The oauth_token_secret is also stored in session state for step 2."
+    description="Step 1 of OAuth 1.0a: Get the request token and authorize URL. Returns oauth_token, oauth_token_secret, and authorize_url. The oauth_token_secret is also stored in session state for step 2.",
+    tags={"auth"},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
 )
 async def get_oauth_request_token( #TODO rename it
     base_url: str, #TODO is it necessary?
@@ -70,7 +77,14 @@ async def get_oauth_request_token( #TODO rename it
 
 @tool(
     name="get_oauth_access_token", #TODO rename it
-    description="Step 2 of OAuth 1.0a: Exchange the request token and PIN for a persistent access token. Reads oauth_token_secret from session state."
+    description="Step 2 of OAuth 1.0a: Exchange the request token and PIN for a persistent access token. Reads oauth_token_secret from session state.",
+    tags={"auth"},
+    annotations={
+        "readOnlyHint": False,
+        "destructiveHint": False,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    },
 )
 async def get_oauth_access_token(
     base_url: str, #TODO is it necessary?
@@ -134,7 +148,14 @@ async def get_oauth_access_token(
 
 @tool(
     name="check_authentication",
-    description="Check if the MCP server is currently authenticated with the USOS API. Use this to verify if the user has completed the setup."
+    description="Check if the MCP server is currently authenticated with the USOS API. Use this to verify if the user has completed the setup.",
+    tags={"auth"},
+    annotations={
+        "readOnlyHint": True,
+        "openWorldHint": True,
+        "idempotentHint": False,
+        "destructiveHint": False
+    },
 )
 async def check_authentication(
     settings: USOSAuthSettings = Depends(get_auth_settings),
