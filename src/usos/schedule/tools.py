@@ -31,6 +31,7 @@ from .utils import (
         "destructiveHint": False,
         "idempotentHint": False
     },
+    timeout=30
 )
 async def get_my_schedule(
     start_date: str | None = None,
@@ -69,6 +70,7 @@ async def get_my_schedule(
         "destructiveHint": False,
         "idempotentHint": True
     },
+    timeout=15
 )
 async def get_my_faculties(ctx: Context = CurrentContext()) -> dict:
     try:
@@ -94,6 +96,7 @@ async def get_my_faculties(ctx: Context = CurrentContext()) -> dict:
         "idempotentHint": False,
         "destructiveHint": False
     },
+    timeout=30
 )
 async def get_days_off(
     start_date: str,
@@ -142,6 +145,7 @@ async def get_days_off(
         "destructiveHint": False,
         "idempotentHint": False
     },
+    timeout=30
 )
 async def get_exam_session_dates(
     term_id: str | None = None,

@@ -20,6 +20,7 @@ from requests_oauthlib import OAuth1Session
         "idempotentHint": False,
         "openWorldHint": True,
     },
+    timeout=15
 )
 async def get_oauth_request_token( #TODO rename it
     base_url: str, #TODO is it necessary?
@@ -85,6 +86,7 @@ async def get_oauth_request_token( #TODO rename it
         "idempotentHint": False,
         "openWorldHint": True,
     },
+    timeout=15
 )
 async def get_oauth_access_token(
     base_url: str, #TODO is it necessary?
@@ -156,6 +158,7 @@ async def get_oauth_access_token(
         "idempotentHint": False,
         "destructiveHint": False
     },
+    timeout=15
 )
 async def check_authentication(
     settings: USOSAuthSettings = Depends(get_auth_settings),

@@ -35,6 +35,7 @@ from .models import GradeAverage, GradeEntry
         "destructiveHint": False,
         "idempotentHint": False
     },
+    timeout=30
 )
 async def get_my_grades(
     mode: str = "all",
@@ -125,6 +126,7 @@ async def get_my_grades(
         "destructiveHint": False,
         "idempotentHint": False
     },
+    timeout=30
 )
 async def calculate_grade_average(
     term_ids: list[str] | None = None,
