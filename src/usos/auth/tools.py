@@ -177,6 +177,14 @@ async def login(
                 f"Saved authentication credentials automatically to {config_path}"
             )
 
+            if hasattr(ctx, "send_notification"):
+                try:
+                    import mcp.types
+                    await ctx.send_notification(mcp.types.ToolListChangedNotification())
+                    await ctx.info("Sent tool list changed notification to client.")
+                except Exception as e:
+                    await ctx.warning(f"Could not notify client about changed tools: {e}")
+
             return {
                 "status": "SUCCESS",
                 "message": f"Successfully authenticated! Credentials have been saved locally to {config_path}. The server is now ready and fully authenticated.",
@@ -260,6 +268,15 @@ async def logout(ctx: Context = CurrentContext()) -> dict:
     try:
         await store.delete("credentials", collection="auth")
         await ctx.info("Deleted credentials from local storage.")
+
+        if hasattr(ctx, "send_notification"):
+            try:
+                import mcp.types
+                await ctx.send_notification(mcp.types.ToolListChangedNotification())
+                await ctx.info("Sent tool list changed notification to client.")
+            except Exception as e:
+                await ctx.warning(f"Could not notify client about changed tools: {e}")
+
         return {
             "success": True,
             "message": "Authentication credentials cleared successfully. You are now logged out.",
