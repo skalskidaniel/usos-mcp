@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 class GradeEntry(BaseModel):
     """A single grade from the USOS API."""
+
     course_id: str = Field(description="ID/code of the course (e.g. S1Inf1>ALG)")
     course_name: str | None = Field(
         default=None, description="Name of the course in English/Polish (if available)"
@@ -23,7 +24,8 @@ class GradeEntry(BaseModel):
         default=None, description="Human-readable grade description (e.g. 'Very good')"
     )
     passes: bool | None = Field(
-        default=None, description="Whether this grade constitutes passing the course/unit"
+        default=None,
+        description="Whether this grade constitutes passing the course/unit",
     )
     counts_into_average: bool | None = Field(
         default=None, description="Whether this grade counts towards the ECTS GPA"
@@ -35,7 +37,8 @@ class GradeEntry(BaseModel):
         default=None, description="USOS internal grade type ID (e.g. STD, EGZ-STD)"
     )
     date_modified: str | None = Field(
-        default=None, description="Timestamp when the grade was last modified (YYYY-MM-DD HH:MM)"
+        default=None,
+        description="Timestamp when the grade was last modified (YYYY-MM-DD HH:MM)",
     )
     comment: str | None = Field(
         default=None, description="Additional comment from the lecturer, if any"
@@ -44,6 +47,7 @@ class GradeEntry(BaseModel):
 
 class GradeAverage(BaseModel):
     """Result of an ECTS-weighted GPA calculation."""
+
     average: float | None = Field(default=None, ge=2.0, le=6.0)
     total_ects: float = Field(default=0.0, ge=0.0)
     grades_counted: int = Field(default=0, ge=0)

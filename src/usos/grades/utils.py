@@ -1,7 +1,7 @@
 from typing import Any
 
 from usos.auth.utils import get_authenticated_session
-from usos.utils import _get_base_url, _get_with_retries
+from usos.utils import _get_base_url, _get_with_retries, extract_localized_str
 
 TERMS_GRADE_FIELDS = (
     "value_symbol|passes|value_description|exam_id|exam_session_number|"
@@ -179,8 +179,18 @@ def compute_weighted_average(
                                         _add_candidate(grouped_candidates, unit_id, g)
 
             if not grouped_candidates:
-                cg_len = len(course_grades) if isinstance(course_grades, (list, dict)) else 0
-                cug_len = sum(len(x) for x in course_units_grades.values() if isinstance(x, list)) if isinstance(course_units_grades, dict) else 0
+                cg_len = (
+                    len(course_grades) if isinstance(course_grades, (list, dict)) else 0
+                )
+                cug_len = (
+                    sum(
+                        len(x)
+                        for x in course_units_grades.values()
+                        if isinstance(x, list)
+                    )
+                    if isinstance(course_units_grades, dict)
+                    else 0
+                )
                 grades_skipped += cg_len + cug_len
                 continue
 
@@ -200,16 +210,36 @@ def compute_weighted_average(
 
             ects_str = term_ects.get(course_id)
             if ects_str is None:
-                cg_len = len(course_grades) if isinstance(course_grades, (list, dict)) else 0
-                cug_len = sum(len(x) for x in course_units_grades.values() if isinstance(x, list)) if isinstance(course_units_grades, dict) else 0
+                cg_len = (
+                    len(course_grades) if isinstance(course_grades, (list, dict)) else 0
+                )
+                cug_len = (
+                    sum(
+                        len(x)
+                        for x in course_units_grades.values()
+                        if isinstance(x, list)
+                    )
+                    if isinstance(course_units_grades, dict)
+                    else 0
+                )
                 grades_skipped += cg_len + cug_len
                 continue
 
             try:
                 ects_val = float(ects_str)
             except ValueError:
-                cg_len = len(course_grades) if isinstance(course_grades, (list, dict)) else 0
-                cug_len = sum(len(x) for x in course_units_grades.values() if isinstance(x, list)) if isinstance(course_units_grades, dict) else 0
+                cg_len = (
+                    len(course_grades) if isinstance(course_grades, (list, dict)) else 0
+                )
+                cug_len = (
+                    sum(
+                        len(x)
+                        for x in course_units_grades.values()
+                        if isinstance(x, list)
+                    )
+                    if isinstance(course_units_grades, dict)
+                    else 0
+                )
                 grades_skipped += cg_len + cug_len
                 continue
 
@@ -227,7 +257,9 @@ def compute_weighted_average(
                     if isinstance(x, list):
                         for sd in x:
                             if isinstance(sd, dict):
-                                all_grades_count += len([v for v in sd.values() if v is not None])
+                                all_grades_count += len(
+                                    [v for v in sd.values() if v is not None]
+                                )
 
             grades_skipped += max(0, all_grades_count - len(resolved_grades))
 
@@ -246,13 +278,7 @@ def _parse_grade_entry(
     unit_id: str | None = None,
     course_name: str | None = None,
 ) -> dict[str, Any]:
-    val_desc = g.get("value_description")
-    desc_str = None
-    if val_desc:
-        if isinstance(val_desc, str):
-            desc_str = val_desc
-        elif isinstance(val_desc, dict):
-            desc_str = val_desc.get("en") or val_desc.get("pl") or next(iter(val_desc.values()), None)
+    desc_str = extract_localized_str(g.get("value_description"))
 
     sess_num = g.get("exam_session_number")
     try:
@@ -287,68 +313,10 @@ def _parse_grade_entry(
     }
 
 
-def flatten_term_grades(data: dict[str, Any]) -> list[dict[str, Any]]:
-    flat = []
-    if not isinstance(data, dict):
-        return flat
-
-    for term_id, courses in data.items():
-        if not isinstance(courses, dict):
-            continue
-        for course_id, course_edition in courses.items():
-            if not isinstance(course_edition, dict):
-                continue
-
-            course_grades = course_edition.get("course_grades") or []
-            if isinstance(course_grades, list):
-                for g in course_grades:
-                    if isinstance(g, dict):
-                        flat.append(
-                            _parse_grade_entry(
-                                g,
-                                course_id=course_id,
-                                term_id=term_id,
-                                grade_type="course",
-                            )
-                        )
-            elif isinstance(course_grades, dict):
-                for g in course_grades.values():
-                    if isinstance(g, dict):
-                        flat.append(
-                            _parse_grade_entry(
-                                g,
-                                course_id=course_id,
-                                term_id=term_id,
-                                grade_type="course",
-                            )
-                        )
-
-            course_units_grades = course_edition.get("course_units_grades") or {}
-            if isinstance(course_units_grades, dict):
-                for unit_id, unit_grades in course_units_grades.items():
-                    if isinstance(unit_grades, list):
-                        for attempt_dict in unit_grades:
-                            if isinstance(attempt_dict, dict):
-                                for g in attempt_dict.values():
-                                    if isinstance(g, dict):
-                                        flat.append(
-                                            _parse_grade_entry(
-                                                g,
-                                                course_id=course_id,
-                                                term_id=term_id,
-                                                grade_type="unit",
-                                                unit_id=unit_id,
-                                            )
-                                        )
-    return flat
-
-
-def flatten_course_edition_grades(
+def _flatten_single_edition(
     course_edition: dict[str, Any], course_id: str, term_id: str
 ) -> list[dict[str, Any]]:
-    flat = []
-    if not isinstance(course_edition, dict):
-        return flat
+    flat: list[dict[str, Any]] = []
 
     course_grades = course_edition.get("course_grades") or []
     if isinstance(course_grades, list):
@@ -394,6 +362,29 @@ def flatten_course_edition_grades(
     return flat
 
 
+def flatten_term_grades(data: dict[str, Any]) -> list[dict[str, Any]]:
+    flat: list[dict[str, Any]] = []
+    if not isinstance(data, dict):
+        return flat
+
+    for term_id, courses in data.items():
+        if not isinstance(courses, dict):
+            continue
+        for course_id, course_edition in courses.items():
+            if not isinstance(course_edition, dict):
+                continue
+            flat.extend(_flatten_single_edition(course_edition, course_id, term_id))
+    return flat
+
+
+def flatten_course_edition_grades(
+    course_edition: dict[str, Any], course_id: str, term_id: str
+) -> list[dict[str, Any]]:
+    if not isinstance(course_edition, dict):
+        return []
+    return _flatten_single_edition(course_edition, course_id, term_id)
+
+
 def flatten_latest_grades(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
     flat = []
     if not isinstance(data, list):
@@ -404,16 +395,7 @@ def flatten_latest_grades(data: list[dict[str, Any]]) -> list[dict[str, Any]]:
         course_edition = g.get("course_edition") or {}
         course_id = course_edition.get("course_id") or "UNKNOWN"
         course_name = course_edition.get("course_name")
-        course_name_str = None
-        if course_name:
-            if isinstance(course_name, str):
-                course_name_str = course_name
-            elif isinstance(course_name, dict):
-                course_name_str = (
-                    course_name.get("en")
-                    or course_name.get("pl")
-                    or next(iter(course_name.values()), None)
-                )
+        course_name_str = extract_localized_str(course_name)
 
         flat.append(
             _parse_grade_entry(

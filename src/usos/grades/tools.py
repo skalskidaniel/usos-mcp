@@ -33,9 +33,9 @@ from .models import GradeAverage, GradeEntry
         "readOnlyHint": True,
         "openWorldHint": True,
         "destructiveHint": False,
-        "idempotentHint": False
+        "idempotentHint": True,
     },
-    timeout=30
+    timeout=30,
 )
 async def get_grades(
     mode: str = "all",
@@ -66,7 +66,9 @@ async def get_grades(
                 course_id,
                 resolved_term,
             )
-            flat_grades = flatten_course_edition_grades(grades, course_id, resolved_term)
+            flat_grades = flatten_course_edition_grades(
+                grades, course_id, resolved_term
+            )
             return {
                 "mode": mode,
                 "course_id": course_id,
@@ -95,7 +97,7 @@ async def get_grades(
             active_ids = [t["id"] for t in active_terms if "id" in t]
             resolved_terms = list(set(active_ids + list(ects_data.keys())))
             resolved_terms.sort()
-            
+
             grades = await asyncio.to_thread(fetch_grades_by_terms, resolved_terms)
             flat_grades = flatten_term_grades(grades)
             return {
@@ -124,9 +126,9 @@ async def get_grades(
         "readOnlyHint": True,
         "openWorldHint": True,
         "destructiveHint": False,
-        "idempotentHint": False
+        "idempotentHint": True,
     },
-    timeout=30
+    timeout=30,
 )
 async def get_gpa(
     term_ids: list[str] | None = None,

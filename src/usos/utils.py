@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -149,7 +147,12 @@ def resolve_term_id(term_id: str | None) -> str:
         t_id = term.get("id")
         start_str = term.get("start_date")
         finish_str = term.get("finish_date") or term.get("end_date")
-        if isinstance(t_id, str) and t_id and isinstance(start_str, str) and isinstance(finish_str, str):
+        if (
+            isinstance(t_id, str)
+            and t_id
+            and isinstance(start_str, str)
+            and isinstance(finish_str, str)
+        ):
             try:
                 start_d = _parse_date(start_str)
                 finish_d = _parse_date(finish_str)
@@ -169,3 +172,17 @@ def resolve_term_id(term_id: str | None) -> str:
             return resolved
 
     raise ValueError("Active term data does not include a valid term id.")
+
+
+def extract_localized_str(
+    value: str | dict | None,
+    prefer: str = "en",
+) -> str | None:
+    """Extract a single string from a USOS localized field (str, dict, or None)."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return value.get(prefer) or value.get("pl") or next(iter(value.values()), None)
+    return None

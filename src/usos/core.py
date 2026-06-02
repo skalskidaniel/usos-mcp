@@ -12,20 +12,17 @@ from .models import ServerSettings
 
 @lifespan
 async def app_lifespan(server):
+    """Lifecycle manager for the USOS MCP server."""
     logger = logging.getLogger(__name__)
     started_at = datetime.now(timezone.utc).isoformat()
     logger.info("USOS MCP server starting", extra={"started_at": started_at})
 
+    # Lazy import to avoid circular dependency with auth module
     from .auth.models import USOSAuthSettings
+
     auth_settings = USOSAuthSettings()
 
-    if not all([
-        auth_settings.consumer_key,
-        auth_settings.consumer_secret,
-        auth_settings.oauth_token,
-        auth_settings.oauth_token_secret,
-        auth_settings.base_url
-    ]):
+    if not auth_settings.is_fully_configured:
         logger.warning(
             "USOS API credentials or base URL are missing from the environment. "
             "Please configure USOS_API_CONSUMER_KEY, USOS_API_CONSUMER_SECRET, "
@@ -43,8 +40,12 @@ async def app_lifespan(server):
             response = await asyncio.to_thread(session.get, test_url, timeout=5.0)
             if response.status_code == 200:
                 user_data = response.json()
-                user_name = f"{user_data.get('first_name')} {user_data.get('last_name')}"
-                logger.info(f"USOS API connection verified successfully for user: {user_name}")
+                user_name = (
+                    f"{user_data.get('first_name')} {user_data.get('last_name')}"
+                )
+                logger.info(
+                    f"USOS API connection verified successfully for user: {user_name}"
+                )
             else:
                 logger.warning(
                     f"USOS API returned status code {response.status_code} during startup check. "
@@ -60,24 +61,22 @@ async def app_lifespan(server):
 
 
 class AuthFilterMiddleware(Middleware):
+    """Middleware to filter tools based on authentication status."""
+
     async def on_list_tools(self, context, call_next):
         tools = await call_next(context)
+        # Lazy import to avoid circular dependency with auth module
         from .auth.models import USOSAuthSettings
+
         settings = USOSAuthSettings()
-        is_auth = all([
-            settings.consumer_key,
-            settings.consumer_secret,
-            settings.oauth_token,
-            settings.oauth_token_secret,
-            settings.base_url
-        ])
-        if is_auth:
+        if settings.is_fully_configured:
             return [t for t in tools if "auth" not in (t.tags or set())]
         else:
             return [t for t in tools if "auth" in (t.tags or set())]
 
 
 def create_server() -> FastMCP:
+    """Build and return the FastMCP application with providers and middleware."""
     provider = FileSystemProvider(Path(__file__).parent)
     mcp = FastMCP(
         "USOS MCP server",
@@ -89,6 +88,7 @@ def create_server() -> FastMCP:
 
 
 def main() -> None:
+    """CLI entry point — configure transport settings and start the server."""
     settings = ServerSettings()
     mcp = create_server()
     kwargs = settings.model_dump()

@@ -4,11 +4,7 @@ from fastmcp.dependencies import CurrentContext
 from fastmcp.server.context import Context
 from fastmcp.tools import tool
 from fastmcp.exceptions import ToolError
-from usos.utils import (
-    get_semester_date_range,
-    resolve_term_id,
-    today_str
-)
+from usos.utils import get_semester_date_range, resolve_term_id, today_str
 
 
 from .models import CalendarEvent
@@ -29,9 +25,9 @@ from .utils import (
         "readOnlyHint": True,
         "openWorldHint": True,
         "destructiveHint": False,
-        "idempotentHint": False
+        "idempotentHint": True,
     },
-    timeout=30
+    timeout=30,
 )
 async def get_schedule(
     start_date: str | None = None,
@@ -68,9 +64,9 @@ async def get_schedule(
         "readOnlyHint": True,
         "openWorldHint": True,
         "destructiveHint": False,
-        "idempotentHint": True
+        "idempotentHint": True,
     },
-    timeout=15
+    timeout=15,
 )
 async def get_faculties(ctx: Context = CurrentContext()) -> dict:
     try:
@@ -93,10 +89,10 @@ async def get_faculties(ctx: Context = CurrentContext()) -> dict:
     annotations={
         "readOnlyHint": True,
         "openWorldHint": True,
-        "idempotentHint": False,
-        "destructiveHint": False
+        "idempotentHint": True,
+        "destructiveHint": False,
     },
-    timeout=30
+    timeout=30,
 )
 async def get_days_off(
     start_date: str,
@@ -116,11 +112,9 @@ async def get_days_off(
             start_date=start_date,
             end_date=end_date,
         )
-        days_off = [
-            event for event in events if bool(event.get("is_day_off"))
-        ]
+        days_off = [event for event in events if bool(event.get("is_day_off"))]
         days_off.sort(key=lambda item: str(item.get("start_date", "")))
-        
+
         flat_days_off = [flatten_calendar_event(e) for e in days_off]
         return {
             "faculty_id": resolved_faculty_id,
@@ -143,9 +137,9 @@ async def get_days_off(
         "readOnlyHint": True,
         "openWorldHint": True,
         "destructiveHint": False,
-        "idempotentHint": False
+        "idempotentHint": True,
     },
-    timeout=30
+    timeout=30,
 )
 async def get_exam_session_dates(
     term_id: str | None = None,
@@ -173,14 +167,18 @@ async def get_exam_session_dates(
             end_date=end_date,
         )
         exam_sessions = [
-            event for event in events if str(event.get("type", "")).lower() == "exam_session"
+            event
+            for event in events
+            if str(event.get("type", "")).lower() == "exam_session"
         ]
-        exam_sessions = list({
-            (event.get("id"), str(event.get("start_date", ""))): event
-            for event in exam_sessions
-        }.values())
+        exam_sessions = list(
+            {
+                (event.get("id"), str(event.get("start_date", ""))): event
+                for event in exam_sessions
+            }.values()
+        )
         exam_sessions.sort(key=lambda item: str(item.get("start_date", "")))
-        
+
         flat_exams = [flatten_calendar_event(e) for e in exam_sessions]
         return {
             "faculty_id": resolved_faculty_id,
