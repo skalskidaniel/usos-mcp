@@ -13,7 +13,7 @@ USOS API modules used:
 Registered tools:
 - login: Interactive step-by-step authentication tool.
 - check_login: Verify local credentials and probe the API with the current session.
-- logout: Clear stored credentials from local configuration store.
+- logout: Clear stored credentials from the local configuration store.
 
 Registered prompts:
 - authenticate_me: Interactive step-by-step guide for first-time OAuth setup in the MCP client.
@@ -21,6 +21,6 @@ Registered prompts:
 Registered resources:
 - usos://universities/supported: List of USOS installations with `base_url` for university lookup.
 
-OAuth endpoints are university-specific; token and authorize URLs are derived from `base_url`.
-Credentials can be passed to setup tools explicitly or loaded from the environment/local config storage.
+OAuth endpoints are university-specific; token and authorization URLs are derived from `base_url`.
+Credentials can be passed to set up tools explicitly or loaded from the environment/local config storage.
 """

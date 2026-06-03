@@ -5,7 +5,7 @@ from fastmcp.server.context import Context
 from fastmcp.tools import tool
 from fastmcp.exceptions import ToolError
 from .models import USOSAuthSettings, AuthStateKey
-from .utils import get_auth_settings
+from .utils import get_auth_settings, clear_auth_context
 from requests_oauthlib import OAuth1Session
 
 
@@ -28,7 +28,7 @@ async def login(
     pin: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
-    """Interactive multi-step OAuth 1.0a authentication flow."""
+    """Interactive multistep OAuth 1.0a authentication flow."""
     current_step = await ctx.get_state(AuthStateKey.AUTH_STEP)
 
     if current_step not in [
@@ -153,12 +153,7 @@ async def login(
                 access_token_url,
             )
 
-            await ctx.delete_state(AuthStateKey.OAUTH_TOKEN_SECRET)
-            await ctx.delete_state(AuthStateKey.OAUTH_TOKEN)
-            await ctx.delete_state(AuthStateKey.CONSUMER_KEY)
-            await ctx.delete_state(AuthStateKey.CONSUMER_SECRET)
-            await ctx.delete_state(AuthStateKey.BASE_URL)
-            await ctx.delete_state(AuthStateKey.AUTH_STEP)
+            await clear_auth_context(ctx)
 
             oauth_token = oauth_tokens.get("oauth_token")
             oauth_token_secret = oauth_tokens.get("oauth_token_secret")
@@ -180,10 +175,13 @@ async def login(
             if hasattr(ctx, "send_notification"):
                 try:
                     import mcp.types
+
                     await ctx.send_notification(mcp.types.ToolListChangedNotification())
                     await ctx.info("Sent tool list changed notification to client.")
                 except Exception as e:
-                    await ctx.warning(f"Could not notify client about changed tools: {e}")
+                    await ctx.warning(
+                        f"Could not notify client about changed tools: {e}"
+                    )
 
             return {
                 "status": "SUCCESS",
@@ -256,12 +254,7 @@ async def logout(ctx: Context = CurrentContext()) -> dict:
     """Clear stored OAuth credentials and session state."""
     from .utils import _get_auth_store
 
-    await ctx.delete_state(AuthStateKey.OAUTH_TOKEN_SECRET)
-    await ctx.delete_state(AuthStateKey.OAUTH_TOKEN)
-    await ctx.delete_state(AuthStateKey.CONSUMER_KEY)
-    await ctx.delete_state(AuthStateKey.CONSUMER_SECRET)
-    await ctx.delete_state(AuthStateKey.BASE_URL)
-    await ctx.delete_state(AuthStateKey.AUTH_STEP)
+    await clear_auth_context(ctx)
 
     store = _get_auth_store()
 
@@ -272,6 +265,7 @@ async def logout(ctx: Context = CurrentContext()) -> dict:
         if hasattr(ctx, "send_notification"):
             try:
                 import mcp.types
+
                 await ctx.send_notification(mcp.types.ToolListChangedNotification())
                 await ctx.info("Sent tool list changed notification to client.")
             except Exception as e:

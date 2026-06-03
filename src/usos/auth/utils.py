@@ -1,7 +1,9 @@
 from pathlib import Path
 import os
+
+from fastmcp import Context
 from requests_oauthlib import OAuth1Session
-from .models import USOSAuthSettings, get_storage_dir
+from .models import USOSAuthSettings, get_storage_dir, AuthStateKey
 
 
 def get_authenticated_session() -> OAuth1Session:
@@ -81,3 +83,12 @@ async def save_auth_config(
         pass
 
     return credentials_file
+
+
+async def clear_auth_context(ctx: Context):
+    await ctx.delete_state(AuthStateKey.OAUTH_TOKEN_SECRET)
+    await ctx.delete_state(AuthStateKey.OAUTH_TOKEN)
+    await ctx.delete_state(AuthStateKey.CONSUMER_KEY)
+    await ctx.delete_state(AuthStateKey.CONSUMER_SECRET)
+    await ctx.delete_state(AuthStateKey.BASE_URL)
+    await ctx.delete_state(AuthStateKey.AUTH_STEP)

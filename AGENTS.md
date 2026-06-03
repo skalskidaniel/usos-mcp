@@ -10,21 +10,26 @@
 
 - Python `>=3.14`. Uses **uv** (`uv sync`, `uv sync --frozen --no-dev`).
 - Runtime deps: `fastmcp`, `pydantic`, `pydantic-settings`, `dotenv`, `requests`, `requests-oauthlib`.
-- `.env` required locally (gitignored). Two independent env-prefix groups:
-  - `FAST_MCP_*` — transport (`stdio`/`http`/`sse`/`streamable-http`), host, port.
-  - `USOS_API_*` — `CONSUMER_KEY`, `CONSUMER_SECRET`, `BASE_URL`, `OAUTH_TOKEN`, `OAUTH_TOKEN_SECRET`.
+- `.env` required locally. Two independent env-prefix groups:
+    - `FAST_MCP_*` — transport (`stdio`/`http`/`sse`/`streamable-http`), host, port.
+    - `USOS_API_*` — `CONSUMER_KEY`, `CONSUMER_SECRET`, `BASE_URL`, `OAUTH_TOKEN`, `OAUTH_TOKEN_SECRET`.
 - Runs tests via **pytest** under `tests/` (`test_auth.py`, `test_schedule.py`, `test_utils.py`).
 
 ## Architecture
 
 - `src/usos/` main package. Modular registry pattern.
-- `core.py`: Bootstraps `FastMCP` with a `FileSystemProvider` that scans `src/usos` for `@tool`, `@prompt`, and `@resource` decorators.
+- `core.py`: Bootstraps `FastMCP` with a `FileSystemProvider` that scans `src/usos` for `@tool`, `@prompt`, and
+  `@resource` decorators.
 - `models.py`: `ServerSettings` (pydantic-settings, `FAST_MCP_` prefix).
-- Domain packages (`auth/`, `schedule/`, `grades/`) each own their `tools.py`, `prompts.py`, `resources.py`, `models.py`, `utils.py`.
-- `auth/` — OAuth 1.0a setup (`login`, `check_login`, `logout`), `authenticate_me` prompt, `usos://universities/supported` resource.
-- `schedule/` — Timetable and calendar tools (`get_schedule`, `get_faculties`, `get_days_off`, `get_exam_session_dates`).
+- Domain packages (`auth/`, `schedule/`, `grades/`) each own their `tools.py`, `prompts.py`, `resources.py`,
+  `models.py`, `utils.py`.
+- `auth/` — OAuth 1.0a setup (`login`, `check_login`, `logout`), `authenticate_me` prompt,
+  `usos://universities/supported` resource.
+- `schedule/` — Timetable and calendar tools (`get_schedule`, `get_faculties`, `get_days_off`,
+  `get_exam_session_dates`).
 - `grades/` — Fetch student grades (`get_grades`) and calculate ECTS-weighted GPA (`get_gpa`).
-- Auth utils (`get_authenticated_session`) provides the signed OAuth1Session reused by other packages. Uses `USOSAuthSettings` (env prefix `USOS_API_`).
+- Auth utils (`get_authenticated_session`) provides the signed OAuth1Session reused by other packages. Uses
+  `USOSAuthSettings` (env prefix `USOS_API_`).
 - Old root `server.py` removed.
 
 ## API Constraints
@@ -32,9 +37,11 @@
 - `services/tt/student`: max **7 days** per request.
 - `services/calendar/search`: max **30 days** per request (batching built into `fetch_calendar_events`).
 - `calendar/search` is marked BETA in USOS docs.
-- Faculty auto-resolution (`resolve_faculty_id`) works only when exactly one faculty is found; otherwise raises `MultipleFacultiesError`.
+- Faculty auto-resolution (`resolve_faculty_id`) works only when exactly one faculty is found; otherwise raises
+  `MultipleFacultiesError`.
 - Term auto-resolution picks the first active term from `services/terms/terms_index`.
-- `get_gpa` excludes non-numeric grade symbols (e.g., `ZAL`, `NZAL`, `NK`) and requires ECTS details fetched from `services/courses/user_ects_points`.
+- `get_gpa` excludes non-numeric grade symbols (e.g., `ZAL`, `NZAL`, `NK`) and requires ECTS details fetched from
+  `services/courses/user_ects_points`.
 - All grade retrieval tools require the user token to have the `grades` OAuth scope.
 
 ## Build & CI
