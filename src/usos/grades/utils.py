@@ -1,7 +1,12 @@
 from typing import Any
 
 from usos.auth.utils import get_authenticated_session
-from usos.utils import _get_base_url, _get_with_retries, extract_localized_str
+from usos.utils import (
+    _get_base_url,
+    _get_with_retries,
+    extract_localized_str,
+    _parse_bool,
+)
 
 TERMS_GRADE_FIELDS = (
     "value_symbol|passes|value_description|exam_id|exam_session_number|"
@@ -106,16 +111,7 @@ def fetch_user_ects_points() -> dict[str, Any]:
     return {}
 
 
-def _parse_bool(val: Any) -> bool:
-    if isinstance(val, bool):
-        return val
-    if isinstance(val, str):
-        return val.strip().upper() in ("T", "TRUE", "Y", "YES", "1")
-    if isinstance(val, (int, float)):
-        return bool(val)
-    return False
-
-
+# noinspection PyTypeChecker
 def _add_candidate(grouped: dict, key: str, g: dict):
     if not _parse_bool(g.get("counts_into_average")):
         return
@@ -138,6 +134,7 @@ def _add_candidate(grouped: dict, key: str, g: dict):
     grouped[key].append((session_num, grade_val))
 
 
+# noinspection PyTypeChecker
 def compute_weighted_average(
     grades_data: dict[str, Any],
     ects_data: dict[str, Any],
@@ -270,6 +267,7 @@ def compute_weighted_average(
     return average, total_ects, grades_counted, grades_skipped
 
 
+# noinspection PyTypeChecker
 def _parse_grade_entry(
     g: dict[str, Any],
     course_id: str,
@@ -296,12 +294,19 @@ def _parse_grade_entry(
     else:
         comment = comment.strip()
 
+    parsed_unit_id = None
+    if unit_id is not None:
+        try:
+            parsed_unit_id = int(unit_id)
+        except (ValueError, TypeError):
+            pass
+
     return {
         "course_id": course_id,
         "course_name": course_name,
         "term_id": term_id,
         "type": grade_type,
-        "unit_id": unit_id,
+        "course_unit_id": parsed_unit_id,
         "value_symbol": g.get("value_symbol"),
         "value_description": desc_str,
         "passes": _parse_bool(g.get("passes")),

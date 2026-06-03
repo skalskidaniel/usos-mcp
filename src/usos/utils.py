@@ -6,15 +6,12 @@ from typing import Any
 
 import requests
 from requests import HTTPError
-from requests.exceptions import ChunkedEncodingError
-from requests.exceptions import ConnectTimeout
-from requests.exceptions import ConnectionError as RequestsConnectionError
-from requests.exceptions import ReadTimeout
-from requests.exceptions import Timeout
+from requests.exceptions import (
+    RequestException,
+)
 
 from usos.auth.models import USOSAuthSettings
-
-RETRIABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+from usos.auth.utils import get_authenticated_session
 
 
 def _get_base_url() -> str:
@@ -69,21 +66,26 @@ def _get_with_retries(
             response = requester(url, params=params, timeout=timeout)
             response.raise_for_status()
             return response
-        except HTTPError as exc:
-            status_code = exc.response.status_code if exc.response is not None else None
-            if status_code not in RETRIABLE_STATUS_CODES:
-                raise
-            last_error = exc
-            if attempt == attempts:
-                break
-            time.sleep(base_sleep_s * attempt)
-        except (
-            RequestsConnectionError,
-            ReadTimeout,
-            ConnectTimeout,
-            Timeout,
-            ChunkedEncodingError,
-        ) as exc:
+        except RequestException as exc:
+            if isinstance(exc, HTTPError):
+                status_code = exc.response.status_code if exc.response is not None else None
+                if status_code == 400 and exc.response is not None:
+                    try:
+                        err_json = exc.response.json()
+                        err_msg = err_json.get("message") or err_json.get("error")
+                        if err_msg:
+                            raise ValueError(f"USOS API Error: {err_msg}") from exc
+                    except Exception as parse_err:
+                        if isinstance(parse_err, ValueError) and "USOS API Error" in str(parse_err):
+                            raise
+                
+                is_retryable = (
+                    (isinstance(status_code, int) and 500 <= status_code < 600)
+                    or status_code in (408, 429)
+                )
+                if not is_retryable:
+                    raise exc
+            
             last_error = exc
             if attempt == attempts:
                 break
@@ -186,3 +188,190 @@ def extract_localized_str(
     if isinstance(value, dict):
         return value.get(prefer) or value.get("pl") or next(iter(value.values()), None)
     return None
+
+
+def _parse_bool(val: Any) -> bool:
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        return val.strip().upper() in ("T", "TRUE", "Y", "YES", "1")
+    if isinstance(val, (int, float)):
+        return bool(val)
+    return False
+
+
+class MultipleFacultiesError(Exception):
+    def __init__(self, faculties: list[dict[str, Any]]) -> None:
+        self.faculties = faculties
+        super().__init__("Multiple faculties found. Pass faculty_id explicitly.")
+
+
+def fetch_user_faculties() -> list[dict[str, Any]]:
+    """Return faculties associated with the authenticated user.
+
+    Resolution strategy:
+    1. Student programmes (preferred for student users).
+    2. Employment functions (fallback for staff users or limited scopes).
+    """
+    base_url = _get_base_url()
+    session = get_authenticated_session()
+    faculties_by_id: dict[str, dict[str, Any]] = {}
+
+    def _collect_programme_ids(programmes: Any) -> set[str]:
+        programme_ids: set[str] = set()
+        if not isinstance(programmes, list):
+            return programme_ids
+        for programme_entry in programmes:
+            if not isinstance(programme_entry, dict):
+                continue
+            programme = programme_entry.get("programme")
+            if not isinstance(programme, dict):
+                continue
+            programme_id = programme.get("id")
+            if isinstance(programme_id, str) and programme_id:
+                programme_ids.add(programme_id)
+        return programme_ids
+
+    def _resolve_programme_faculty(programme_id: str) -> None:
+        try:
+            response = _get_with_retries(
+                session.get,
+                f"{base_url}/services/progs/programme",
+                params={
+                    "programme_id": programme_id,
+                    "fields": "id|description|faculty[id|name]",
+                    "format": "json",
+                },
+                timeout=20,
+                attempts=4,
+            )
+        except (HTTPError, RequestException):
+            return
+
+        payload = response.json()
+        if not isinstance(payload, dict):
+            return
+
+        faculty = payload.get("faculty")
+        if not isinstance(faculty, dict):
+            return
+        faculty_id = faculty.get("id")
+        if not isinstance(faculty_id, str) or not faculty_id:
+            return
+        if faculty_id in faculties_by_id:
+            return
+
+        faculties_by_id[faculty_id] = {
+            "id": faculty_id,
+            "name": faculty.get("name"),
+        }
+
+    try:
+        response = _get_with_retries(
+            session.get,
+            f"{base_url}/services/users/user",
+            params={"fields": "student_programmes", "format": "json"},
+            timeout=20,
+            attempts=4,
+        )
+        payload = response.json()
+        if isinstance(payload, dict):
+            for programme_id in sorted(
+                _collect_programme_ids(payload.get("student_programmes", []))
+            ):
+                _resolve_programme_faculty(programme_id)
+    except (HTTPError, RequestException):
+        pass
+
+    return list(faculties_by_id.values())
+
+
+def resolve_faculty_id(faculty_id: str | None) -> str:
+    if faculty_id and faculty_id.strip():
+        return faculty_id.strip()
+
+    faculties = fetch_user_faculties()
+    if len(faculties) == 1:
+        resolved = faculties[0].get("id")
+        if isinstance(resolved, str) and resolved:
+            return resolved
+
+    if len(faculties) > 1:
+        raise MultipleFacultiesError(faculties)
+
+    raise ValueError(
+        "Could not auto-resolve faculty_id from student programmes or employment functions. "
+        "Use get_faculties and pass faculty_id explicitly."
+    )
+
+
+def fetch_user_profile(
+    user_id: str | None = None, fields: str = "id"
+) -> dict[str, Any]:
+    """Fetch user profile information from USOS API.
+
+    If user_id is None, fetches the profile of the currently authenticated user.
+    """
+    base_url = _get_base_url()
+    session = get_authenticated_session()
+
+    params = {"fields": fields, "format": "json"}
+    if user_id:
+        params["user_id"] = user_id
+
+    response = _get_with_retries(
+        session.get,
+        f"{base_url}/services/users/user",
+        params=params,
+        timeout=20,
+        attempts=4,
+    )
+    data = response.json()
+    if isinstance(data, dict):
+        return data
+    return {}
+
+
+def fetch_classtypes_index() -> dict[str, Any]:
+    base_url = _get_base_url()
+    response = _get_with_retries(
+        requests.get,
+        f"{base_url}/services/courses/classtypes_index",
+        params={"format": "json"},
+        timeout=20,
+        attempts=4,
+    )
+    data = response.json()
+    if isinstance(data, dict):
+        return data
+    return {}
+
+
+def resolve_course_and_term(course_id: str, term_id: str | None = None) -> tuple[str, str | None]:
+    """If course_id is numeric (a unit ID), resolve it to the actual course_id and term_id.
+    Otherwise return it as-is.
+    """
+    cleaned = course_id.strip()
+    if cleaned.isdigit():
+        base_url = _get_base_url()
+        session = get_authenticated_session()
+        try:
+            response = _get_with_retries(
+                session.get,
+                f"{base_url}/services/courses/unit",
+                params={
+                    "unit_id": cleaned,
+                    "fields": "course_id|term_id",
+                    "format": "json",
+                },
+                timeout=20,
+                attempts=3,
+            )
+            data = response.json()
+            resolved_course = data.get("course_id")
+            resolved_term = data.get("term_id")
+            if resolved_course:
+                return resolved_course, term_id or resolved_term
+        except Exception:
+            pass
+    return course_id, term_id

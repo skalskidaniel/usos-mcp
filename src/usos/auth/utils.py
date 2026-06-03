@@ -86,9 +86,13 @@ async def save_auth_config(
 
 
 async def clear_auth_context(ctx: Context):
-    await ctx.delete_state(AuthStateKey.OAUTH_TOKEN_SECRET)
-    await ctx.delete_state(AuthStateKey.OAUTH_TOKEN)
-    await ctx.delete_state(AuthStateKey.CONSUMER_KEY)
-    await ctx.delete_state(AuthStateKey.CONSUMER_SECRET)
-    await ctx.delete_state(AuthStateKey.BASE_URL)
-    await ctx.delete_state(AuthStateKey.AUTH_STEP)
+    import asyncio
+    await asyncio.gather(
+        ctx.delete_state(AuthStateKey.OAUTH_TOKEN_SECRET),
+        ctx.delete_state(AuthStateKey.OAUTH_TOKEN),
+        ctx.delete_state(AuthStateKey.CONSUMER_KEY),
+        ctx.delete_state(AuthStateKey.CONSUMER_SECRET),
+        ctx.delete_state(AuthStateKey.BASE_URL),
+        ctx.delete_state(AuthStateKey.AUTH_STEP),
+        return_exceptions=True,
+    )

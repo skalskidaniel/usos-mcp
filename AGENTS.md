@@ -13,7 +13,7 @@
 - `.env` required locally. Two independent env-prefix groups:
     - `FAST_MCP_*` — transport (`stdio`/`http`/`sse`/`streamable-http`), host, port.
     - `USOS_API_*` — `CONSUMER_KEY`, `CONSUMER_SECRET`, `BASE_URL`, `OAUTH_TOKEN`, `OAUTH_TOKEN_SECRET`.
-- Runs tests via **pytest** under `tests/` (`test_auth.py`, `test_schedule.py`, `test_utils.py`).
+- Runs tests via **pytest** under `tests/` (`test_auth.py`, `test_schedule.py`, `test_utils.py`, `test_groups.py`).
 
 ## Architecture
 
@@ -21,13 +21,14 @@
 - `core.py`: Bootstraps `FastMCP` with a `FileSystemProvider` that scans `src/usos` for `@tool`, `@prompt`, and
   `@resource` decorators.
 - `models.py`: `ServerSettings` (pydantic-settings, `FAST_MCP_` prefix).
-- Domain packages (`auth/`, `schedule/`, `grades/`) each own their `tools.py`, `prompts.py`, `resources.py`,
+- Domain packages (`auth/`, `schedule/`, `grades/`, `groups/`, `courses/`, `lecturer/`) each own their `tools.py`, `prompts.py`, `resources.py`,
   `models.py`, `utils.py`.
 - `auth/` — OAuth 1.0a setup (`login`, `check_login`, `logout`), `authenticate_me` prompt,
   `usos://universities/supported` resource.
 - `schedule/` — Timetable and calendar tools (`get_schedule`, `get_faculties`, `get_days_off`,
   `get_exam_session_dates`).
 - `grades/` — Fetch student grades (`get_grades`) and calculate ECTS-weighted GPA (`get_gpa`).
+- `groups/` — Fetch student class groups (`get_student_groups`) and group participants (`get_group_participants`).
 - Auth utils (`get_authenticated_session`) provides the signed OAuth1Session reused by other packages. Uses
   `USOSAuthSettings` (env prefix `USOS_API_`).
 - Old root `server.py` removed.
@@ -54,3 +55,4 @@
 ## Documentation references
 
 - [FastMCP](https://gofastmcp.com/llms.txt)
+- [USOS API](https://usosapps.put.poznan.pl/developers/api/)

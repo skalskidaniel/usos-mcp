@@ -3,8 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import requests
-from requests import HTTPError
-from requests.exceptions import RequestException
 
 from usos.auth.utils import get_authenticated_session
 from usos.utils import (
@@ -13,7 +11,6 @@ from usos.utils import (
     date_range_to_windows,
     extract_localized_str,
 )
-from .models import MultipleFacultiesError
 
 
 TT_DEFAULT_FIELDS = (
@@ -81,105 +78,6 @@ def fetch_faculty_search(
         return items
     return []
 
-
-def fetch_user_faculties() -> list[dict[str, Any]]:
-    """Return faculties associated with the authenticated user.
-
-    Resolution strategy:
-    1. Student programmes (preferred for student users).
-    2. Employment functions (fallback for staff users or limited scopes).
-    """
-    # TODO test this function
-    base_url = _get_base_url()
-    session = get_authenticated_session()
-    faculties_by_id: dict[str, dict[str, Any]] = {}
-
-    def _collect_programme_ids(programmes: Any) -> set[str]:
-        programme_ids: set[str] = set()
-        if not isinstance(programmes, list):
-            return programme_ids
-        for programme_entry in programmes:
-            if not isinstance(programme_entry, dict):
-                continue
-            programme = programme_entry.get("programme")
-            if not isinstance(programme, dict):
-                continue
-            programme_id = programme.get("id")
-            if isinstance(programme_id, str) and programme_id:
-                programme_ids.add(programme_id)
-        return programme_ids
-
-    def _resolve_programme_faculty(programme_id: str) -> None:
-        try:
-            response = _get_with_retries(
-                session.get,
-                f"{base_url}/services/progs/programme",
-                params={
-                    "programme_id": programme_id,
-                    "fields": "id|description|faculty[id|name]",
-                    "format": "json",
-                },
-                timeout=20,
-                attempts=4,
-            )
-        except HTTPError, RequestException:
-            return
-
-        payload = response.json()
-        if not isinstance(payload, dict):
-            return
-
-        faculty = payload.get("faculty")
-        if not isinstance(faculty, dict):
-            return
-        faculty_id = faculty.get("id")
-        if not isinstance(faculty_id, str) or not faculty_id:
-            return
-        if faculty_id in faculties_by_id:
-            return
-
-        faculties_by_id[faculty_id] = {
-            "id": faculty_id,
-            "name": faculty.get("name"),
-        }
-
-    try:
-        response = _get_with_retries(
-            session.get,
-            f"{base_url}/services/users/user",
-            params={"fields": "student_programmes", "format": "json"},
-            timeout=20,
-            attempts=4,
-        )
-        payload = response.json()
-        if isinstance(payload, dict):
-            for programme_id in sorted(
-                _collect_programme_ids(payload.get("student_programmes", []))
-            ):
-                _resolve_programme_faculty(programme_id)
-    except HTTPError, RequestException:
-        pass
-
-    return list(faculties_by_id.values())
-
-
-def resolve_faculty_id(faculty_id: str | None) -> str:
-    if faculty_id and faculty_id.strip():
-        return faculty_id.strip()
-
-    faculties = fetch_user_faculties()
-    if len(faculties) == 1:
-        resolved = faculties[0].get("id")
-        if isinstance(resolved, str) and resolved:
-            return resolved
-
-    if len(faculties) > 1:
-        raise MultipleFacultiesError(faculties)
-
-    raise ValueError(
-        "Could not auto-resolve faculty_id from student programmes or employment functions. "
-        "Use get_faculties and pass faculty_id explicitly."
-    )
 
 
 def fetch_calendar_events(

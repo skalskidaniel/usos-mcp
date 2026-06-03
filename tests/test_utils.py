@@ -1,7 +1,15 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from datetime import date
-from usos.utils import resolve_term_id
+from usos.utils import (
+    resolve_term_id,
+    resolve_faculty_id,
+    fetch_user_faculties,
+    fetch_classtypes_index,
+    MultipleFacultiesError,
+    _parse_bool,
+    _get_with_retries,
+)
 
 class TestResolveTermId(unittest.TestCase):
     def test_returns_explicit_term_id(self):
@@ -9,7 +17,6 @@ class TestResolveTermId(unittest.TestCase):
 
     @patch("usos.utils.fetch_active_terms")
     def test_falls_back_to_first_active_term_if_no_match(self, mock_fetch):
-        # Setup: terms that don't contain today's date (assuming today is NOT 2020)
         mock_fetch.return_value = [
             {
                 "id": "2020Z",
@@ -22,16 +29,13 @@ class TestResolveTermId(unittest.TestCase):
                 "finish_date": "2021-09-30",
             }
         ]
-        # Since today is not in 2020/2021, none of the terms will match today's date.
-        # It should fall back to returning the first term's ID ("2020Z").
         self.assertEqual(resolve_term_id(None), "2020Z")
 
     @patch("usos.utils.fetch_active_terms")
     @patch("usos.utils.date")
     def test_selects_shortest_duration_matching_term(self, mock_date, mock_fetch):
-        # Mock today as 2026-06-02
         mock_date.today.return_value = date(2026, 6, 2)
-        mock_date.side_effect = lambda *args, **kw: date(*args, **kw) # keep constructor working
+        mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
         
         mock_fetch.return_value = [
             {
@@ -58,6 +62,135 @@ class TestResolveTermId(unittest.TestCase):
         mock_fetch.return_value = []
         with self.assertRaises(ValueError):
             resolve_term_id(None)
+
+
+class TestFacultyResolution(unittest.TestCase):
+    @patch("usos.utils.fetch_user_faculties")
+    def test_resolve_faculty_id_explicit(self, mock_fetch):
+        self.assertEqual(resolve_faculty_id("  03000000  "), "03000000")
+        mock_fetch.assert_not_called()
+
+    @patch("usos.utils.fetch_user_faculties")
+    def test_resolve_faculty_id_single(self, mock_fetch):
+        mock_fetch.return_value = [{"id": "03000000", "name": "Faculty of Math"}]
+        self.assertEqual(resolve_faculty_id(None), "03000000")
+
+    @patch("usos.utils.fetch_user_faculties")
+    def test_resolve_faculty_id_multiple(self, mock_fetch):
+        facs = [
+            {"id": "03000000", "name": "Faculty of Math"},
+            {"id": "04000000", "name": "Faculty of Physics"},
+        ]
+        mock_fetch.return_value = facs
+        with self.assertRaises(MultipleFacultiesError) as ctx:
+            resolve_faculty_id(None)
+        self.assertEqual(ctx.exception.faculties, facs)
+
+    @patch("usos.utils.fetch_user_faculties")
+    def test_resolve_faculty_id_none(self, mock_fetch):
+        mock_fetch.return_value = []
+        with self.assertRaises(ValueError):
+            resolve_faculty_id(None)
+
+    @patch("usos.utils.get_authenticated_session")
+    @patch("usos.utils._get_base_url")
+    def test_fetch_user_faculties_success(self, mock_base_url, mock_get_session):
+        mock_base_url.return_value = "http://test"
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_profile_resp = MagicMock()
+        mock_profile_resp.json.return_value = {
+            "student_programmes": [
+                {
+                    "programme": {
+                        "id": "PROG-1"
+                    }
+                }
+            ]
+        }
+        
+        mock_prog_resp = MagicMock()
+        mock_prog_resp.json.return_value = {
+            "id": "PROG-1",
+            "faculty": {
+                "id": "FAC-1",
+                "name": {"en": "Faculty of Computer Science"}
+            }
+        }
+
+        mock_session.get.side_effect = [mock_profile_resp, mock_prog_resp]
+
+        faculties = fetch_user_faculties()
+        self.assertEqual(len(faculties), 1)
+        self.assertEqual(faculties[0]["id"], "FAC-1")
+        self.assertEqual(faculties[0]["name"]["en"], "Faculty of Computer Science")
+
+
+class TestParseBool(unittest.TestCase):
+    def test_parse_bool(self):
+        self.assertTrue(_parse_bool(True))
+        self.assertFalse(_parse_bool(False))
+        self.assertTrue(_parse_bool("T"))
+        self.assertTrue(_parse_bool("true"))
+        self.assertTrue(_parse_bool("TRUE"))
+        self.assertTrue(_parse_bool("y"))
+        self.assertTrue(_parse_bool("yes"))
+        self.assertTrue(_parse_bool("1"))
+        self.assertFalse(_parse_bool("F"))
+        self.assertFalse(_parse_bool("false"))
+        self.assertFalse(_parse_bool("0"))
+        self.assertTrue(_parse_bool(1))
+        self.assertTrue(_parse_bool(1.5))
+        self.assertFalse(_parse_bool(0))
+        self.assertFalse(_parse_bool(None))
+        self.assertFalse(_parse_bool([]))
+
+
+class TestClasstypesIndex(unittest.TestCase):
+    @patch("usos.utils._get_with_retries")
+    @patch("usos.utils._get_base_url")
+    def test_fetch_classtypes_index_success(self, mock_get_base_url, mock_get_with_retries):
+        mock_get_base_url.return_value = "https://usos.example.com"
+        mock_res = MagicMock()
+        mock_res.json.return_value = {
+            "w": {"name": {"en": "Lecture"}},
+        }
+        mock_get_with_retries.return_value = mock_res
+
+        types = fetch_classtypes_index()
+        self.assertEqual(types["w"]["name"]["en"], "Lecture")
+
+
+class TestGetWithRetries(unittest.TestCase):
+    def test_retry_on_connection_error_then_success(self):
+        mock_requester = MagicMock()
+        from requests.exceptions import ConnectionError
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"success": True}
+        mock_requester.side_effect = [
+            ConnectionError("Aborted"),
+            ConnectionError("Aborted"),
+            mock_response,
+        ]
+
+        res = _get_with_retries(mock_requester, "http://test", {}, attempts=3, base_sleep_s=0.001)
+        self.assertEqual(res, mock_response)
+        self.assertEqual(mock_requester.call_count, 3)
+
+    def test_no_retry_on_404_error(self):
+        mock_requester = MagicMock()
+        from requests import HTTPError
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        exc = HTTPError(response=mock_response)
+        mock_requester.side_effect = exc
+        
+        with self.assertRaises(HTTPError):
+            _get_with_retries(mock_requester, "http://test", {}, attempts=3, base_sleep_s=0.001)
+        self.assertEqual(mock_requester.call_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

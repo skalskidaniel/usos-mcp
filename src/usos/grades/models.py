@@ -14,8 +14,8 @@ class GradeEntry(BaseModel):
     type: str = Field(
         description="Grade type: 'course' (final grade for the course) or 'unit' (grade for a course unit)"
     )
-    unit_id: str | None = Field(
-        default=None, description="ID of the course unit component (if type is 'unit')"
+    course_unit_id: int | None = Field(
+        default=None, description="The unique numeric ID of the course unit component (if type is 'unit')"
     )
     value_symbol: str | None = Field(
         default=None, description="The grade value symbol (e.g. '5.0', '3.5', 'ZAL')"

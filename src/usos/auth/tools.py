@@ -9,6 +9,7 @@ from .utils import get_auth_settings, clear_auth_context
 from requests_oauthlib import OAuth1Session
 
 
+# noinspection PyInconsistentReturns,PyTypeChecker
 @tool(
     name="login",
     description="Interactive step-by-step authentication tool. Run this tool with no parameters first to start.",
@@ -28,7 +29,15 @@ async def login(
     pin: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
-    """Interactive multistep OAuth 1.0a authentication flow."""
+    """
+    Interactive multistep OAuth 1.0a authentication flow.
+    
+    Args:
+        base_url: The base URL of the university's USOS API (e.g., 'https://usosapps.put.poznan.pl').
+        consumer_key: The OAuth 1.0a Consumer Key retrieved from the developer portal.
+        consumer_secret: The OAuth 1.0a Consumer Secret retrieved from the developer portal.
+        pin: The OAuth 1.0a authorization PIN code provided by the user after login.
+    """
     current_step = await ctx.get_state(AuthStateKey.AUTH_STEP)
 
     if current_step not in [
@@ -48,8 +57,11 @@ async def login(
                 "Error: `base_url` is required for this step. Please provide the matched `base_url`."
             )
 
-        await ctx.set_state(AuthStateKey.BASE_URL, base_url)
-        await ctx.set_state(AuthStateKey.AUTH_STEP, "AWAITING_APP_REGISTRATION")
+        await asyncio.gather(
+            ctx.set_state(AuthStateKey.BASE_URL, base_url),
+            ctx.set_state(AuthStateKey.AUTH_STEP, "AWAITING_APP_REGISTRATION"),
+            return_exceptions=True,
+        )
 
         return {
             "status": "AWAITING_APP_REGISTRATION",
@@ -85,7 +97,7 @@ async def login(
 
         try:
             await ctx.info("Requesting OAuth request token.")
-            scopes = "studies|grades|offline_access"
+            scopes = "studies|grades|student_exams|offline_access"
             fetch_response = await asyncio.to_thread(
                 oauth.fetch_request_token,
                 f"{request_token_url}?scopes={scopes}",
@@ -99,11 +111,14 @@ async def login(
                     "Failed to retrieve valid request tokens from USOS API."
                 )
 
-            await ctx.set_state(AuthStateKey.OAUTH_TOKEN, resource_owner_key)
-            await ctx.set_state(AuthStateKey.OAUTH_TOKEN_SECRET, resource_owner_secret)
-            await ctx.set_state(AuthStateKey.CONSUMER_KEY, consumer_key)
-            await ctx.set_state(AuthStateKey.CONSUMER_SECRET, consumer_secret)
-            await ctx.set_state(AuthStateKey.AUTH_STEP, "AWAITING_PIN")
+            await asyncio.gather(
+                ctx.set_state(AuthStateKey.OAUTH_TOKEN, resource_owner_key),
+                ctx.set_state(AuthStateKey.OAUTH_TOKEN_SECRET, resource_owner_secret),
+                ctx.set_state(AuthStateKey.CONSUMER_KEY, consumer_key),
+                ctx.set_state(AuthStateKey.CONSUMER_SECRET, consumer_secret),
+                ctx.set_state(AuthStateKey.AUTH_STEP, "AWAITING_PIN"),
+                return_exceptions=True,
+            )
 
             authorization_url = oauth.authorization_url(authorize_url)
 
@@ -124,11 +139,13 @@ async def login(
         if not pin:
             raise ToolError("Error: `pin` is required for this step.")
 
-        stored_base_url = await ctx.get_state(AuthStateKey.BASE_URL)
-        c_key = await ctx.get_state(AuthStateKey.CONSUMER_KEY)
-        c_secret = await ctx.get_state(AuthStateKey.CONSUMER_SECRET)
-        oauth_token = await ctx.get_state(AuthStateKey.OAUTH_TOKEN)
-        oauth_token_secret = await ctx.get_state(AuthStateKey.OAUTH_TOKEN_SECRET)
+        stored_base_url, c_key, c_secret, oauth_token, oauth_token_secret = await asyncio.gather(
+            ctx.get_state(AuthStateKey.BASE_URL),
+            ctx.get_state(AuthStateKey.CONSUMER_KEY),
+            ctx.get_state(AuthStateKey.CONSUMER_SECRET),
+            ctx.get_state(AuthStateKey.OAUTH_TOKEN),
+            ctx.get_state(AuthStateKey.OAUTH_TOKEN_SECRET),
+        )
 
         if not all([stored_base_url, c_key, c_secret, oauth_token, oauth_token_secret]):
             await ctx.set_state(AuthStateKey.AUTH_STEP, "AWAITING_BASE_URL")
@@ -171,17 +188,6 @@ async def login(
             await ctx.info(
                 f"Saved authentication credentials automatically to {config_path}"
             )
-
-            if hasattr(ctx, "send_notification"):
-                try:
-                    import mcp.types
-
-                    await ctx.send_notification(mcp.types.ToolListChangedNotification())
-                    await ctx.info("Sent tool list changed notification to client.")
-                except Exception as e:
-                    await ctx.warning(
-                        f"Could not notify client about changed tools: {e}"
-                    )
 
             return {
                 "status": "SUCCESS",
@@ -261,15 +267,6 @@ async def logout(ctx: Context = CurrentContext()) -> dict:
     try:
         await store.delete("credentials", collection="auth")
         await ctx.info("Deleted credentials from local storage.")
-
-        if hasattr(ctx, "send_notification"):
-            try:
-                import mcp.types
-
-                await ctx.send_notification(mcp.types.ToolListChangedNotification())
-                await ctx.info("Sent tool list changed notification to client.")
-            except Exception as e:
-                await ctx.warning(f"Could not notify client about changed tools: {e}")
 
         return {
             "success": True,
