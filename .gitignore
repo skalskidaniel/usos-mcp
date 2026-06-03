@@ -219,3 +219,6 @@ __marimo__/
 
 # USOS auth credentials
 src/usos/auth/credentials.json
+
+# Git worktrees for concurrent development
+worktrees/
