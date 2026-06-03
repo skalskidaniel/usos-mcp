@@ -138,6 +138,31 @@ class TestCoursesUtils(unittest.TestCase):
 
     @patch("usos.courses.utils.get_authenticated_session")
     @patch("usos.courses.utils._get_base_url")
+    @patch("usos.grades.utils.fetch_user_ects_points")
+    def test_fetch_course_basic_info_ects_fallback(self, mock_ects, mock_get_base_url, mock_get_session):
+        mock_get_base_url.return_value = "https://usos.example.com"
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        mock_ects.return_value = {"CS101": 5.5}
+
+        mock_response_ed = MagicMock()
+        mock_response_ed.json.return_value = {"passing_status": "passed"}
+        
+        mock_response_c = MagicMock()
+        mock_response_c.json.return_value = {
+            "id": "CS101",
+            "name": {"en": "Intro to CS"},
+            "ects_credits_simplified": None,
+            "assessment_criteria": {"en": "Written exam"},
+        }
+        mock_session.get.side_effect = [mock_response_ed, mock_response_c]
+
+        res = fetch_course_basic_info("CS101", "2025Z")
+        self.assertEqual(res["course_id"], "CS101")
+        self.assertEqual(res["ects_credits"], 5.5)
+
+    @patch("usos.courses.utils.get_authenticated_session")
+    @patch("usos.courses.utils._get_base_url")
     def test_fetch_course_basic_info_not_found(self, mock_get_base_url, mock_get_session):
         mock_get_base_url.return_value = "https://usos.example.com"
         mock_session = MagicMock()

@@ -4,7 +4,6 @@ from fastmcp.server.context import Context
 from fastmcp.tools import tool
 from fastmcp.exceptions import ToolError
 from usos.utils import (
-    today_str,
     fetch_user_profile,
     resolve_term_id,
     extract_localized_str,
@@ -15,7 +14,6 @@ from .utils import (
     fetch_course_lecturers,
     search_users,
     fetch_lecturer_courses,
-    fetch_lecturer_schedule,
     LECTURER_FIELDS,
 )
 
@@ -37,6 +35,11 @@ async def get_course_lecturers(
     term_id: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        course_id: The ID of the course.
+        term_id: Optional ID of the academic term. Auto-resolved to current if omitted.
+    """
     try:
         from usos.utils import resolve_course_and_term
         course_id, term_id = await asyncio.to_thread(resolve_course_and_term, course_id, term_id)
@@ -72,6 +75,11 @@ async def search_lecturer(
     limit: int = 10,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        query: The search string (e.g., part of a name or surname) to find employees/lecturers.
+        limit: Maximum number of results to return (default is 10).
+    """
     try:
         await ctx.info(f"Searching for users matching: {query}")
         items = await asyncio.to_thread(search_users, query, limit)
@@ -124,6 +132,10 @@ async def get_lecturer_courses(
     lecturer_id: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        lecturer_id: The ID of the lecturer. If omitted, uses the currently authenticated user's ID.
+    """
     try:
         await ctx.info(f"Fetching courses for lecturer ID: {lecturer_id or 'self'}")
         raw_groups = await asyncio.to_thread(fetch_lecturer_courses, lecturer_id)
@@ -139,8 +151,16 @@ async def get_lecturer_courses(
                 raw_name = g.get("course_name")
                 course_name = extract_localized_str(raw_name) if isinstance(raw_name, dict) else raw_name
 
+                course_unit_id = g.get("course_unit_id")
+                try:
+                    if course_unit_id is not None:
+                        course_unit_id = int(course_unit_id)
+                except (ValueError, TypeError):
+                    course_unit_id = None
+
                 mapped = LecturerGroup(
                     course_id=course_id,
+                    course_unit_id=course_unit_id,
                     course_name=course_name,
                     class_type_id=class_type_id,
                 )

@@ -46,6 +46,9 @@ class LecturerGroup(BaseModel):
     course_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)] = Field(
         description="Course code/identifier"
     )
+    course_unit_id: int | None = Field(
+        default=None, description="Numeric course unit ID"
+    )
     course_name: str | None = Field(default=None, description="Course name")
     class_type_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)] | None = Field(
         default=None, description="USOS class type code"

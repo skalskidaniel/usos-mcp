@@ -8,11 +8,12 @@ TT_DEFAULT_FIELDS = (
     "building_name|room_number|room_id|lecturer_ids|group_number|frequency"
 )
 
+
 def fetch_course_lecturers(course_id: str, term_id: str) -> dict[str, Any]:
     """Fetch lecturers for a given course edition via services/courses/course_edition."""
     base_url = _get_base_url()
     session = get_authenticated_session()
-    
+
     response = _get_with_retries(
         session.get,
         f"{base_url}/services/courses/course_edition",
@@ -27,11 +28,12 @@ def fetch_course_lecturers(course_id: str, term_id: str) -> dict[str, Any]:
     )
     return response.json()
 
+
 def search_users(query: str, limit: int = 10) -> list[dict[str, Any]]:
     """Search for users using services/users/search2."""
     base_url = _get_base_url()
     session = get_authenticated_session()
-    
+
     response = _get_with_retries(
         session.get,
         f"{base_url}/services/users/search2",
@@ -47,18 +49,19 @@ def search_users(query: str, limit: int = 10) -> list[dict[str, Any]]:
     data = response.json()
     return data.get("items", []) if isinstance(data, dict) else []
 
+
 def fetch_lecturer_courses(lecturer_id: str | None) -> list[dict[str, Any]]:
     """Retrieve courses taught by a given lecturer via services/groups/lecturer."""
     base_url = _get_base_url()
     session = get_authenticated_session()
-    
+
     params = {
-        "fields": "course_id|course_name|term_id|group_number|class_type_id",
+        "fields": "course_id|course_name|term_id|group_number|class_type_id|course_unit_id",
         "format": "json",
     }
     if lecturer_id:
         params["user_id"] = lecturer_id
-        
+
     response = _get_with_retries(
         session.get,
         f"{base_url}/services/groups/lecturer",
@@ -66,7 +69,7 @@ def fetch_lecturer_courses(lecturer_id: str | None) -> list[dict[str, Any]]:
         timeout=20,
         attempts=4,
     )
-    
+
     data = response.json()
     if isinstance(data, dict) and "groups" in data:
         data = data["groups"]
@@ -82,14 +85,17 @@ def fetch_lecturer_courses(lecturer_id: str | None) -> list[dict[str, Any]]:
         groups = data
     return groups
 
-def fetch_lecturer_schedule(lecturer_id: str, start: str, days: int = 1) -> list[dict[str, Any]]:
+
+def fetch_lecturer_schedule(
+    lecturer_id: str, start: str, days: int = 1
+) -> list[dict[str, Any]]:
     """Fetch timetable for a lecturer via services/tt/staff."""
     if days < 1 or days > 7:
         raise ValueError("days must be between 1 and 7 for services/tt/staff.")
-        
+
     base_url = _get_base_url()
     session = get_authenticated_session()
-    
+
     response = _get_with_retries(
         session.get,
         f"{base_url}/services/tt/staff",

@@ -44,6 +44,13 @@ async def get_grades(
     days: int | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        mode: The mode to fetch grades: 'term', 'course', 'latest', or 'all' (default).
+        term_id: The ID of the academic term (required for 'term' mode, optional for 'course' mode).
+        course_id: The ID of the course (required for 'course' mode).
+        days: Number of days to look back for modified grades (used only in 'latest' mode).
+    """
     try:
         mode = mode.lower().strip()
         if mode == "term":
@@ -168,6 +175,10 @@ async def get_gpa(
     term_ids: list[str] | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        term_ids: Optional list of term IDs to filter the GPA calculation. If omitted, calculates for all terms.
+    """
     try:
         resolved_terms = term_ids
         if not resolved_terms:

@@ -1,10 +1,8 @@
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
-from fastmcp.exceptions import ToolError
 from datetime import datetime, timedelta
 
-from usos.grades.models import GradeEntry
-from usos.grades.tools import get_grades, get_gpa
+from usos.grades.tools import get_grades
 
 
 class TestGradesTools(unittest.IsolatedAsyncioTestCase):

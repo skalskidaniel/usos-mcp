@@ -39,6 +39,12 @@ async def get_schedule(
     lecturer_id: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        start_date: The start date for the schedule in YYYY-MM-DD format. Defaults to today.
+        days: Number of days to fetch the schedule for (default 7, max typically 7).
+        lecturer_id: Optional ID of a lecturer to fetch their schedule. Defaults to the authenticated student's schedule.
+    """
     try:
         resolved_start = start_date or today_str()
         if lecturer_id:
@@ -122,6 +128,12 @@ async def get_days_off(
     faculty_id: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        start_date: The start date of the search window in YYYY-MM-DD format.
+        end_date: The end date of the search window in YYYY-MM-DD format.
+        faculty_id: Optional ID of the faculty. If omitted, auto-resolved from the student's active programmes.
+    """
     try:
         await ctx.info("Resolving faculty and fetching day-off events.")
         resolved_faculty_id = await asyncio.to_thread(
@@ -168,6 +180,11 @@ async def get_exam_session_dates(
     faculty_id: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        term_id: Optional ID of the academic term. Auto-resolved to the current term if omitted.
+        faculty_id: Optional ID of the faculty. Auto-resolved from the student's active programmes if omitted.
+    """
     try:
         await ctx.info("Resolving term and faculty for exam sessions.")
         resolved_faculty_id = await asyncio.to_thread(

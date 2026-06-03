@@ -30,6 +30,11 @@ async def get_course_info(
     term_id: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        course_id: The ID of the course to fetch information for.
+        term_id: Optional ID of the academic term. If omitted, the system will try to auto-resolve to the current term.
+    """
     try:
         from usos.utils import resolve_course_and_term
         course_id, term_id = await asyncio.to_thread(resolve_course_and_term, course_id, term_id)
@@ -98,6 +103,10 @@ async def get_exams(
     include_past: bool = False,
     ctx: Context = CurrentContext(),
 ) -> list[dict]:
+    """
+    Args:
+        include_past: If True, includes past exams. If False, only returns upcoming exams.
+    """
     try:
         await ctx.info("Fetching student exam calendar.")
         raw_exams = await asyncio.to_thread(fetch_student_exams)

@@ -54,10 +54,20 @@ def fetch_course_basic_info(course_id: str, term_id: str | None = None) -> dict[
     if not course_data:
         raise ValueError(f"Course '{course_id}' not found.")
 
+    ects_credits = course_data.get("ects_credits_simplified")
+    if ects_credits is None:
+        try:
+            from usos.grades.utils import fetch_user_ects_points
+            ects_points = fetch_user_ects_points()
+            if course_id in ects_points:
+                ects_credits = float(ects_points[course_id])
+        except Exception:
+            pass
+
     return {
         "course_id": course_id,
         "name": extract_localized_str(course_data.get("name")),
-        "ects_credits": course_data.get("ects_credits_simplified"),
+        "ects_credits": ects_credits,
         "assessment_criteria": extract_localized_str(course_data.get("assessment_criteria")),
         "passing_status": passing_status,
     }

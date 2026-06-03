@@ -14,6 +14,7 @@ class Activity(BaseModel):
 
 class ClassgroupActivity(Activity):
     course_id: str | None = None
+    course_unit_id: int | None = None
     course_name: dict[str, str] | str | None = None
     classtype_name: dict[str, str] | str | None = None
     building_name: dict[str, str] | str | None = None

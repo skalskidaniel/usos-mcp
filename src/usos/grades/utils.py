@@ -294,12 +294,19 @@ def _parse_grade_entry(
     else:
         comment = comment.strip()
 
+    parsed_unit_id = None
+    if unit_id is not None:
+        try:
+            parsed_unit_id = int(unit_id)
+        except (ValueError, TypeError):
+            pass
+
     return {
         "course_id": course_id,
         "course_name": course_name,
         "term_id": term_id,
         "type": grade_type,
-        "unit_id": unit_id,
+        "course_unit_id": parsed_unit_id,
         "value_symbol": g.get("value_symbol"),
         "value_description": desc_str,
         "passes": _parse_bool(g.get("passes")),

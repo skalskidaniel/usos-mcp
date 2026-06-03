@@ -46,10 +46,12 @@ class TestLecturerModels(unittest.TestCase):
         # Valid group
         group = LecturerGroup(
             course_id="CS-101",
+            course_unit_id=25320,
             course_name="Intro to CS",
             class_type_id="w",
         )
         self.assertEqual(group.course_id, "CS-101")
+        self.assertEqual(group.course_unit_id, 25320)
         self.assertEqual(group.course_name, "Intro to CS")
         self.assertEqual(group.class_type_id, "w")
 
@@ -135,6 +137,7 @@ class TestLecturerTools(unittest.IsolatedAsyncioTestCase):
         mock_fetch.return_value = [
             {
                 "course_id": "CS-101",
+                "course_unit_id": 25320,
                 "course_name": "Programming",
                 "term_id": "2025Z",
                 "number": 1,
@@ -142,6 +145,7 @@ class TestLecturerTools(unittest.IsolatedAsyncioTestCase):
             },
             {
                 "course_id": "CS-101",
+                "course_unit_id": 25320,
                 "course_name": "Programming",
                 "term_id": "2026Z",
                 "number": 2,
@@ -149,6 +153,7 @@ class TestLecturerTools(unittest.IsolatedAsyncioTestCase):
             },
             {
                 "course_id": "CS-102",
+                "course_unit_id": 25321,
                 "course_name": "Databases",
                 "term_id": "2025L",
                 "group_number": 2,
@@ -162,9 +167,11 @@ class TestLecturerTools(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(result["courses"]), 2)
         self.assertIsInstance(result["courses"][0], LecturerGroup)
         self.assertEqual(result["courses"][0].course_id, "CS-101")
+        self.assertEqual(result["courses"][0].course_unit_id, 25320)
         self.assertEqual(result["courses"][0].course_name, "Programming")
         self.assertEqual(result["courses"][0].class_type_id, "w")
         self.assertEqual(result["courses"][1].course_id, "CS-102")
+        self.assertEqual(result["courses"][1].course_unit_id, 25321)
 
     @patch("usos.lecturer.tools.fetch_lecturer_courses")
     async def test_get_lecturer_courses_error(self, mock_fetch):

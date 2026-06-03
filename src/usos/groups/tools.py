@@ -29,6 +29,10 @@ async def get_student_groups(
     active_only: bool = False,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        active_only: If True, filters the returned groups to only those in the currently active academic terms.
+    """
     try:
         await ctx.info("Retrieving student class groups from USOS API.")
         payload = await asyncio.to_thread(fetch_user_groups, active_only)
@@ -81,6 +85,11 @@ async def get_group_participants(
     group_number: int,
     ctx: Context = CurrentContext(),
 ) -> dict:
+    """
+    Args:
+        course_unit_id: The ID of the course unit the group belongs to.
+        group_number: The number of the specific class group.
+    """
     try:
         await ctx.info(
             f"Retrieving participants for group {group_number} under course unit {course_unit_id}."

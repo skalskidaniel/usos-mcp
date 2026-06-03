@@ -7,11 +7,6 @@ from typing import Any
 import requests
 from requests import HTTPError
 from requests.exceptions import (
-    ChunkedEncodingError,
-    ConnectTimeout,
-    ConnectionError as RequestsConnectionError,
-    ReadTimeout,
-    Timeout,
     RequestException,
 )
 
