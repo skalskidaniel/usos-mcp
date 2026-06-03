@@ -1,0 +1,70 @@
+# Git configuration
+.git
+.gitignore
+.github
+
+# Environment files and credentials
+.env
+.envrc
+src/usos/auth/credentials.json
+
+# IDE settings
+.idea
+.vscode
+.cursor
+
+# Python cache & build files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Tests & caches
+tests/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+.coverage
+.coverage.*
+htmlcov/
+
+# Documentation
+docs/
+README.md
+CONTRIBUTING.md
+AGENTS.md
+LICENSE
+
+# Other tool configs/caches
+.python-version
+fastmcp.json
+marimo/
+marimo-lsp/
+__marimo__/
+.streamlit/
