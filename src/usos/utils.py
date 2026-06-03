@@ -5,13 +5,15 @@ import time
 from typing import Any
 
 import requests
-from requests import HTTPError, RequestException
-from requests.exceptions import ChunkedEncodingError
-from requests.exceptions import ConnectTimeout
-from requests.exceptions import ConnectionError as RequestsConnectionError
-from requests.exceptions import ReadTimeout
-from requests.exceptions import Timeout
-from requests.exceptions import RequestException
+from requests import HTTPError
+from requests.exceptions import (
+    ChunkedEncodingError,
+    ConnectTimeout,
+    ConnectionError as RequestsConnectionError,
+    ReadTimeout,
+    Timeout,
+    RequestException,
+)
 
 from usos.auth.models import USOSAuthSettings
 from usos.auth.utils import get_authenticated_session
@@ -305,7 +307,9 @@ def resolve_faculty_id(faculty_id: str | None) -> str:
     )
 
 
-def fetch_user_profile(user_id: str | None = None, fields: str = "id") -> dict[str, Any]:
+def fetch_user_profile(
+    user_id: str | None = None, fields: str = "id"
+) -> dict[str, Any]:
     """Fetch user profile information from USOS API.
 
     If user_id is None, fetches the profile of the currently authenticated user.

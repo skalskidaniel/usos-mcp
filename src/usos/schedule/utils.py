@@ -3,8 +3,6 @@ from __future__ import annotations
 from typing import Any
 
 import requests
-from requests import HTTPError
-from requests.exceptions import RequestException
 
 from usos.auth.utils import get_authenticated_session
 from usos.utils import (
@@ -12,9 +10,6 @@ from usos.utils import (
     _get_with_retries,
     date_range_to_windows,
     extract_localized_str,
-    fetch_user_faculties,
-    resolve_faculty_id,
-    MultipleFacultiesError,
 )
 
 

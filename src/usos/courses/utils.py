@@ -1,7 +1,11 @@
 from typing import Any
-import requests
 from usos.auth.utils import get_authenticated_session
-from usos.utils import _get_base_url, _get_with_retries, extract_localized_str
+from usos.utils import (
+    _get_base_url,
+    _get_with_retries,
+    extract_localized_str,
+    fetch_classtypes_index,
+)
 
 COURSE_FIELDS = "id|name|ects_credits_simplified|assessment_criteria|description|bibliography"
 EDITION_FIELDS = "course_id|course_name|term_id|description|bibliography|passing_status|course_units[id|classtype_id|topics|learning_outcomes|assessment_criteria|teaching_methods]"
@@ -114,3 +118,12 @@ def fetch_student_exams() -> list[dict[str, Any]]:
     if isinstance(data, list):
         return data
     return []
+
+
+def resolve_classtypes() -> dict[str, str]:
+    """Fetch the dictionary mapping course class type IDs to their localized names."""
+    raw_types = fetch_classtypes_index()
+    resolved = {}
+    for ct_id, val in raw_types.items():
+        resolved[ct_id] = extract_localized_str(val.get("name")) or ct_id
+    return resolved

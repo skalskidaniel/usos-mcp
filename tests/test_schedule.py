@@ -3,7 +3,6 @@ from unittest.mock import patch, MagicMock
 from usos.schedule.utils import flatten_calendar_event
 from fastmcp.exceptions import ToolError
 from usos.schedule.tools import get_days_off, get_exam_session_dates
-from usos.utils import MultipleFacultiesError, fetch_user_faculties, resolve_faculty_id
 
 class TestScheduleTools(unittest.IsolatedAsyncioTestCase):
     def test_flatten_calendar_event(self):

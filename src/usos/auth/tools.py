@@ -9,6 +9,7 @@ from .utils import get_auth_settings, clear_auth_context
 from requests_oauthlib import OAuth1Session
 
 
+# noinspection PyInconsistentReturns,PyTypeChecker
 @tool(
     name="login",
     description="Interactive step-by-step authentication tool. Run this tool with no parameters first to start.",

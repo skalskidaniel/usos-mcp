@@ -1,12 +1,11 @@
 import unittest
 from unittest.mock import patch, MagicMock
-import asyncio
 from fastmcp.exceptions import ToolError
 from pydantic import ValidationError
 
-from usos.courses.models import CourseBasicInfo, CourseSyllabus, StudentExam, CourseUnitInfo, ExamGroupDetails
-from usos.courses.tools import get_course, get_syllabus, get_exams, resolve_classtypes
-from usos.courses.utils import fetch_course_basic_info, fetch_syllabus_details, fetch_student_exams
+from usos.courses.models import CourseBasicInfo, CourseSyllabus, CourseUnitInfo, ExamGroupDetails
+from usos.courses.tools import get_course, get_syllabus, get_exams
+from usos.courses.utils import fetch_course_basic_info, fetch_syllabus_details, resolve_classtypes
 
 
 class TestCoursesModels(unittest.TestCase):
@@ -303,14 +302,14 @@ class TestCoursesTools(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(grp["exam_end"], "2026-06-15 12:00:00")
         self.assertEqual(grp["capacity"], 50)
 
-    @patch("usos.courses.tools.fetch_classtypes_index")
-    async def test_resolve_classtypes_tool_success(self, mock_fetch_classtypes):
+    @patch("usos.courses.utils.fetch_classtypes_index")
+    def test_resolve_classtypes_success(self, mock_fetch_classtypes):
         mock_fetch_classtypes.return_value = {
             "w": {"name": {"en": "Lecture", "pl": "Wykład"}},
             "c": {"name": {"en": "Exercises", "pl": "Ćwiczenia"}}
         }
 
-        res = await resolve_classtypes(ctx=self.mock_ctx)
+        res = resolve_classtypes()
         self.assertEqual(res["w"], "Lecture")
         self.assertEqual(res["c"], "Exercises")
 

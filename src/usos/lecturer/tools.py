@@ -14,6 +14,7 @@ from .utils import (
     LECTURER_FIELDS,
 )
 
+
 @tool(
     name="get_course_lecturers",
     description="Check who teaches a given course (list of lecturers).",
@@ -33,7 +34,7 @@ async def get_course_lecturers(
     try:
         await ctx.info(f"Fetching lecturers for course: {course_id}")
         data = await asyncio.to_thread(fetch_course_lecturers, course_id)
-        lecturers = [Lecturer(**l) for l in data.get("lecturers", [])]
+        lecturers = [Lecturer(**lecturer) for lecturer in data.get("lecturers", [])]
         return {
             "course_id": course_id,
             "course_name": data.get("name"),
@@ -64,20 +65,30 @@ async def search_lecturer(
     try:
         await ctx.info(f"Searching for users matching: {query}")
         items = await asyncio.to_thread(search_users, query, limit)
-        user_ids = [item.get("user_id") or item.get("id") for item in items if (item.get("user_id") or item.get("id"))]
-        
-        # Parallel fetch of user details to optimize execution
+        user_ids = [
+            item.get("user_id") or item.get("id")
+            for item in items
+            if (item.get("user_id") or item.get("id"))
+        ]
+
         async def fetch_one(uid):
             return await asyncio.to_thread(fetch_user_profile, uid, LECTURER_FIELDS)
-            
-        details_list = await asyncio.gather(*(fetch_one(uid) for uid in user_ids), return_exceptions=True)
-        
+
+        details_list = await asyncio.gather(
+            *(fetch_one(uid) for uid in user_ids), return_exceptions=True
+        )
+
         lecturers = []
         for det in details_list:
-            if isinstance(det, Exception) or not det or not isinstance(det, dict) or "id" not in det:
+            if (
+                isinstance(det, Exception)
+                or not det
+                or not isinstance(det, dict)
+                or "id" not in det
+            ):
                 continue
             lecturers.append(Lecturer(**det))
-            
+
         return {
             "query": query,
             "results": lecturers,
@@ -106,7 +117,7 @@ async def get_lecturer_courses(
     try:
         await ctx.info(f"Fetching courses for lecturer ID: {lecturer_id or 'self'}")
         raw_groups = await asyncio.to_thread(fetch_lecturer_courses, lecturer_id)
-        
+
         groups = []
         for g in raw_groups:
             group_num = g.get("number") or g.get("group_number")
@@ -126,7 +137,7 @@ async def get_lecturer_courses(
                 class_type_id=g.get("class_type_id"),
             )
             groups.append(mapped)
-            
+
         return {
             "lecturer_id": lecturer_id or "self",
             "courses_count": len(groups),
@@ -157,7 +168,9 @@ async def get_lecturer_schedule(
 ) -> dict:
     try:
         resolved_start = start_date or today_str()
-        await ctx.info(f"Fetching timetable for lecturer {lecturer_id} starting from {resolved_start}")
+        await ctx.info(
+            f"Fetching timetable for lecturer {lecturer_id} starting from {resolved_start}"
+        )
         activities = await asyncio.to_thread(
             fetch_lecturer_schedule,
             lecturer_id=lecturer_id,

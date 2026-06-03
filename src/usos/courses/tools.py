@@ -5,7 +5,13 @@ from fastmcp.tools import tool
 from fastmcp.exceptions import ToolError
 
 from usos.utils import resolve_term_id, extract_localized_str, fetch_classtypes_index
-from .models import CourseBasicInfo, CourseSyllabus, StudentExam, CourseUnitInfo, ExamGroupDetails
+from .models import (
+    CourseBasicInfo,
+    CourseSyllabus,
+    StudentExam,
+    CourseUnitInfo,
+    ExamGroupDetails,
+)
 from .utils import (
     fetch_course_basic_info,
     fetch_syllabus_details,
@@ -28,7 +34,9 @@ async def get_course(
     try:
         await ctx.info(f"Fetching course information for: {course_id}")
         resolved_term = await asyncio.to_thread(resolve_term_id, term_id)
-        raw_info = await asyncio.to_thread(fetch_course_basic_info, course_id, resolved_term)
+        raw_info = await asyncio.to_thread(
+            fetch_course_basic_info, course_id, resolved_term
+        )
         return CourseBasicInfo(**raw_info).model_dump()
     except Exception as exc:
         await ctx.error(f"Failed to fetch course: {exc}")
@@ -61,7 +69,9 @@ async def get_syllabus(
             classtype_id = unit.get("classtype_id")
             resolved_class_name = None
             if classtype_id and classtype_id in classtypes:
-                resolved_class_name = extract_localized_str(classtypes[classtype_id].get("name"))
+                resolved_class_name = extract_localized_str(
+                    classtypes[classtype_id].get("name")
+                )
 
             unit_id_raw = unit.get("id")
             unit_id = int(unit_id_raw) if unit_id_raw is not None else 1
@@ -72,8 +82,12 @@ async def get_syllabus(
                     classtype_id=classtype_id or "unknown",
                     class_type_name=resolved_class_name,
                     topics=extract_localized_str(unit.get("topics")),
-                    learning_outcomes=extract_localized_str(unit.get("learning_outcomes")),
-                    assessment_criteria=extract_localized_str(unit.get("assessment_criteria")),
+                    learning_outcomes=extract_localized_str(
+                        unit.get("learning_outcomes")
+                    ),
+                    assessment_criteria=extract_localized_str(
+                        unit.get("assessment_criteria")
+                    ),
                 )
             )
 
@@ -138,22 +152,3 @@ async def get_exams(ctx: Context = CurrentContext()) -> list[dict]:
         await ctx.error(f"Failed to fetch exams: {exc}")
         raise ToolError(f"Failed to fetch exams: {exc}") from exc
 
-
-@tool(
-    name="resolve_classtypes",
-    description="Fetch the dictionary mapping course class type IDs to their localized names.",
-    tags={"courses"},
-    annotations={"readOnlyHint": True, "idempotentHint": True},
-    timeout=15,
-)
-async def resolve_classtypes(ctx: Context = CurrentContext()) -> dict:
-    try:
-        await ctx.info("Fetching class types index.")
-        raw_types = await asyncio.to_thread(fetch_classtypes_index)
-        resolved = {}
-        for ct_id, val in raw_types.items():
-            resolved[ct_id] = extract_localized_str(val.get("name")) or ct_id
-        return resolved
-    except Exception as exc:
-        await ctx.error(f"Failed to resolve class types: {exc}")
-        raise ToolError(f"Failed to resolve class types: {exc}") from exc
