@@ -6,7 +6,7 @@ from typing import Any
 
 import requests
 from requests import HTTPError
-from requests.exceptions import ChunkedEncodingError
+from requests.exceptions import ChunkedEncodingError, RequestException
 from requests.exceptions import ConnectTimeout
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import ReadTimeout
@@ -326,10 +326,9 @@ def fetch_user_profile(user_id: str | None = None, fields: str = "id") -> dict[s
 
 def fetch_classtypes_index() -> dict[str, Any]:
     base_url = _get_base_url()
-    session = get_authenticated_session()
     response = _get_with_retries(
-        session.get,
-        f"{base_url}/services/courses/classtypes",
+        requests.get,
+        f"{base_url}/services/courses/classtypes_index",
         params={"format": "json"},
         timeout=20,
         attempts=4,
