@@ -83,8 +83,42 @@ async def get_grades(
             if days > 107:
                 raise ValueError("days must be not greater than 107")
             await ctx.info("Fetching latest grades.")
-            grades = await asyncio.to_thread(fetch_latest_grades, days)
-            flat_grades = flatten_latest_grades(grades)
+            try:
+                grades = await asyncio.to_thread(fetch_latest_grades, days)
+                flat_grades = flatten_latest_grades(grades)
+            except Exception as exc:
+                await ctx.warning(
+                    f"Upstream /services/grades/latest failed ({exc}). Falling back to fetching all grades and filtering by date."
+                )
+                ects_data = await asyncio.to_thread(fetch_user_ects_points)
+                active_terms = await asyncio.to_thread(fetch_active_terms)
+                active_ids = [t["id"] for t in active_terms if "id" in t]
+                resolved_terms = list(set(active_ids + list(ects_data.keys())))
+                resolved_terms.sort()
+
+                all_grades = await asyncio.to_thread(fetch_grades_by_terms, resolved_terms)
+                flat_all_grades = flatten_term_grades(all_grades)
+
+                from datetime import datetime, timedelta
+                cut_off = datetime.now() - timedelta(days=days)
+                
+                flat_grades = []
+                for g in flat_all_grades:
+                    date_mod_str = g.get("date_modified")
+                    if date_mod_str:
+                        try:
+                            dt_str = date_mod_str.replace(" ", "T")
+                            if "T" in dt_str:
+                                dt_str_clean = dt_str[:16]
+                                dt = datetime.strptime(dt_str_clean, "%Y-%m-%dT%H:%M")
+                            else:
+                                dt = datetime.strptime(dt_str[:10], "%Y-%m-%d")
+                            if dt >= cut_off:
+                                flat_grades.append(g)
+                        except Exception:
+                            pass
+                flat_grades.sort(key=lambda x: x.get("date_modified") or "", reverse=True)
+
             return {
                 "mode": mode,
                 "days": days,

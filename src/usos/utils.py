@@ -71,20 +71,26 @@ def _get_with_retries(
             response = requester(url, params=params, timeout=timeout)
             response.raise_for_status()
             return response
-        except HTTPError as exc:
-            status_code = exc.response.status_code if exc.response is not None else None
-            if status_code == 400 and exc.response is not None:
-                try:
-                    err_json = exc.response.json()
-                    err_msg = err_json.get("message") or err_json.get("error")
-                    if err_msg:
-                        raise ValueError(f"USOS API Error: {err_msg}") from exc
-                except Exception as parse_err:
-                    if isinstance(parse_err, ValueError) and "USOS API Error" in str(parse_err):
-                        raise
-            is_5xx = isinstance(status_code, int) and 500 <= status_code < 600
-            if not is_5xx:
-                raise
+        except RequestException as exc:
+            if isinstance(exc, HTTPError):
+                status_code = exc.response.status_code if exc.response is not None else None
+                if status_code == 400 and exc.response is not None:
+                    try:
+                        err_json = exc.response.json()
+                        err_msg = err_json.get("message") or err_json.get("error")
+                        if err_msg:
+                            raise ValueError(f"USOS API Error: {err_msg}") from exc
+                    except Exception as parse_err:
+                        if isinstance(parse_err, ValueError) and "USOS API Error" in str(parse_err):
+                            raise
+                
+                is_retryable = (
+                    (isinstance(status_code, int) and 500 <= status_code < 600)
+                    or status_code in (408, 429)
+                )
+                if not is_retryable:
+                    raise exc
+            
             last_error = exc
             if attempt == attempts:
                 break

@@ -8,6 +8,7 @@ from usos.utils import (
     fetch_classtypes_index,
     MultipleFacultiesError,
     _parse_bool,
+    _get_with_retries,
 )
 
 class TestResolveTermId(unittest.TestCase):
@@ -159,6 +160,36 @@ class TestClasstypesIndex(unittest.TestCase):
 
         types = fetch_classtypes_index()
         self.assertEqual(types["w"]["name"]["en"], "Lecture")
+
+
+class TestGetWithRetries(unittest.TestCase):
+    def test_retry_on_connection_error_then_success(self):
+        mock_requester = MagicMock()
+        from requests.exceptions import ConnectionError
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"success": True}
+        mock_requester.side_effect = [
+            ConnectionError("Aborted"),
+            ConnectionError("Aborted"),
+            mock_response,
+        ]
+
+        res = _get_with_retries(mock_requester, "http://test", {}, attempts=3, base_sleep_s=0.001)
+        self.assertEqual(res, mock_response)
+        self.assertEqual(mock_requester.call_count, 3)
+
+    def test_no_retry_on_404_error(self):
+        mock_requester = MagicMock()
+        from requests import HTTPError
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        exc = HTTPError(response=mock_response)
+        mock_requester.side_effect = exc
+        
+        with self.assertRaises(HTTPError):
+            _get_with_retries(mock_requester, "http://test", {}, attempts=3, base_sleep_s=0.001)
+        self.assertEqual(mock_requester.call_count, 1)
 
 
 if __name__ == "__main__":
