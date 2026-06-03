@@ -42,17 +42,11 @@ class Lecturer(BaseModel):
         return None
 
 class LecturerGroup(BaseModel):
-    """A class group taught by the lecturer."""
+    """A course taught by the lecturer."""
     course_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)] = Field(
         description="Course code/identifier"
     )
-    course_name: dict[str, str] | str | None = Field(default=None, description="Localized course name")
-    term_id: Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^\d{4}[ZL]$")] | None = Field(
-        default=None, description="Academic term ID"
-    )
-    group_number: Annotated[int, Field(gt=0)] | None = Field(
-        default=None, description="Class group number"
-    )
+    course_name: str | None = Field(default=None, description="Course name")
     class_type_id: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)] | None = Field(
         default=None, description="USOS class type code"
     )

@@ -9,7 +9,6 @@ from usos.lecturer.tools import (
     get_course_lecturers,
     search_lecturer,
     get_lecturer_courses,
-    get_lecturer_schedule,
 )
 
 
@@ -48,20 +47,15 @@ class TestLecturerModels(unittest.TestCase):
         group = LecturerGroup(
             course_id="CS-101",
             course_name="Intro to CS",
-            term_id="2025Z",
-            group_number=3,
             class_type_id="w",
         )
         self.assertEqual(group.course_id, "CS-101")
-        self.assertEqual(group.group_number, 3)
+        self.assertEqual(group.course_name, "Intro to CS")
+        self.assertEqual(group.class_type_id, "w")
 
-        # Invalid term_id pattern
+        # Invalid course_id
         with self.assertRaises(ValidationError):
-            LecturerGroup(course_id="CS-101", term_id="2025")
-
-        # Invalid group_number
-        with self.assertRaises(ValidationError):
-            LecturerGroup(course_id="CS-101", group_number=0)
+            LecturerGroup(course_id="", class_type_id="w")
 
 
 class TestLecturerTools(unittest.IsolatedAsyncioTestCase):
@@ -70,10 +64,12 @@ class TestLecturerTools(unittest.IsolatedAsyncioTestCase):
         self.mock_ctx.info = AsyncMock()
         self.mock_ctx.error = AsyncMock()
 
+    @patch("usos.lecturer.tools.resolve_term_id")
     @patch("usos.lecturer.tools.fetch_course_lecturers")
-    async def test_get_course_lecturers_success(self, mock_fetch):
+    async def test_get_course_lecturers_success(self, mock_fetch, mock_resolve_term):
+        mock_resolve_term.return_value = "2025Z"
         mock_fetch.return_value = {
-            "name": {"en": "Software Engineering"},
+            "course_name": {"en": "Software Engineering"},
             "lecturers": [
                 {
                     "id": "1",
@@ -85,15 +81,20 @@ class TestLecturerTools(unittest.IsolatedAsyncioTestCase):
             ],
         }
 
-        result = await get_course_lecturers(course_id="SE-01", ctx=self.mock_ctx)
+        result = await get_course_lecturers(
+            course_id="SE-01", term_id="2025Z", ctx=self.mock_ctx
+        )
         self.assertEqual(result["course_id"], "SE-01")
-        self.assertEqual(result["course_name"], {"en": "Software Engineering"})
+        self.assertEqual(result["course_name"], "Software Engineering")
+        self.assertEqual(result["term_id"], "2025Z")
         self.assertEqual(len(result["lecturers"]), 1)
         self.assertIsInstance(result["lecturers"][0], Lecturer)
         self.assertEqual(result["lecturers"][0].first_name, "Alice")
 
+    @patch("usos.lecturer.tools.resolve_term_id")
     @patch("usos.lecturer.tools.fetch_course_lecturers")
-    async def test_get_course_lecturers_error(self, mock_fetch):
+    async def test_get_course_lecturers_error(self, mock_fetch, mock_resolve_term):
+        mock_resolve_term.return_value = "2025Z"
         mock_fetch.side_effect = Exception("API connection error")
 
         with self.assertRaises(ToolError):
@@ -140,6 +141,13 @@ class TestLecturerTools(unittest.IsolatedAsyncioTestCase):
                 "class_type_id": "w",
             },
             {
+                "course_id": "CS-101",
+                "course_name": "Programming",
+                "term_id": "2026Z",
+                "number": 2,
+                "class_type_id": "w",
+            },
+            {
                 "course_id": "CS-102",
                 "course_name": "Databases",
                 "term_id": "2025L",
@@ -154,8 +162,9 @@ class TestLecturerTools(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(result["courses"]), 2)
         self.assertIsInstance(result["courses"][0], LecturerGroup)
         self.assertEqual(result["courses"][0].course_id, "CS-101")
-        self.assertEqual(result["courses"][0].group_number, 1)
-        self.assertEqual(result["courses"][1].group_number, 2)
+        self.assertEqual(result["courses"][0].course_name, "Programming")
+        self.assertEqual(result["courses"][0].class_type_id, "w")
+        self.assertEqual(result["courses"][1].course_id, "CS-102")
 
     @patch("usos.lecturer.tools.fetch_lecturer_courses")
     async def test_get_lecturer_courses_error(self, mock_fetch):
@@ -163,35 +172,6 @@ class TestLecturerTools(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaises(ToolError):
             await get_lecturer_courses(lecturer_id="99", ctx=self.mock_ctx)
-
-    @patch("usos.lecturer.tools.fetch_lecturer_schedule")
-    async def test_get_lecturer_schedule_success(self, mock_fetch):
-        mock_fetch.return_value = [
-            {
-                "type": "classgroup",
-                "start_time": "2026-06-03 10:00:00",
-                "end_time": "2026-06-03 12:00:00",
-                "name": "Lecture",
-                "course_id": "CS-101",
-            }
-        ]
-
-        result = await get_lecturer_schedule(
-            lecturer_id="99", start_date="2026-06-03", days=2, ctx=self.mock_ctx
-        )
-        self.assertEqual(result["lecturer_id"], "99")
-        self.assertEqual(result["start_date"], "2026-06-03")
-        self.assertEqual(result["days"], 2)
-        self.assertEqual(result["count"], 1)
-        self.assertEqual(result["activities"][0]["course_id"], "CS-101")
-
-    @patch("usos.lecturer.tools.fetch_lecturer_schedule")
-    async def test_get_lecturer_schedule_error(self, mock_fetch):
-        mock_fetch.side_effect = Exception("Timetable API error")
-
-        with self.assertRaises(ToolError):
-            await get_lecturer_schedule(lecturer_id="99", ctx=self.mock_ctx)
-
 
 if __name__ == "__main__":
     unittest.main()

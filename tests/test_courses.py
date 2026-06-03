@@ -3,65 +3,59 @@ from unittest.mock import patch, MagicMock
 from fastmcp.exceptions import ToolError
 from pydantic import ValidationError
 
-from usos.courses.models import CourseBasicInfo, CourseSyllabus, CourseUnitInfo, ExamGroupDetails
-from usos.courses.tools import get_course, get_syllabus, get_exams
+from usos.courses.models import CourseInfo, CourseUnitInfo, ExamGroupDetails
+from usos.courses.tools import get_course_info, get_exams
 from usos.courses.utils import fetch_course_basic_info, fetch_syllabus_details, resolve_classtypes
 
 
 class TestCoursesModels(unittest.TestCase):
-    def test_course_basic_info_validation(self):
+    def test_course_info_validation(self):
         # Valid model
-        info = CourseBasicInfo(
+        info = CourseInfo(
             course_id="CS101",
             name="Intro to CS",
+            term_id="2025Z",
             ects_credits=5.0,
             assessment_criteria="Exam",
             passing_status="passed",
+            description="Intro to coding",
+            bibliography="Bibliography text",
+            course_units=[
+                CourseUnitInfo(
+                    unit_id=123,
+                    classtype_id="w",
+                    class_type_name="Lecture",
+                    topics="Functions, Loops",
+                    learning_outcomes="Understand basics",
+                    assessment_criteria="Quiz",
+                )
+            ]
         )
         self.assertEqual(info.course_id, "CS101")
         self.assertEqual(info.passing_status, "passed")
+        self.assertEqual(len(info.course_units), 1)
 
         # Invalid passing status
         with self.assertRaises(ValidationError):
-            CourseBasicInfo(
+            CourseInfo(
                 course_id="CS101",
                 name="Intro to CS",
+                term_id="2025Z",
                 passing_status="unknown_status",
             )
 
         # Invalid ECTS credits (too high)
         with self.assertRaises(ValidationError):
-            CourseBasicInfo(
+            CourseInfo(
                 course_id="CS101",
                 name="Intro to CS",
+                term_id="2025Z",
                 ects_credits=100.0,
             )
 
-    def test_course_syllabus_and_unit_info(self):
-        unit = CourseUnitInfo(
-            unit_id=123,
-            classtype_id="w",
-            class_type_name="Lecture",
-            topics="Functions, Loops",
-            learning_outcomes="Understand basics",
-            assessment_criteria="Quiz",
-        )
-        syllabus = CourseSyllabus(
-            course_id="CS101",
-            name="Intro to CS",
-            term_id="2025Z",
-            description="Learn to code",
-            prerequisites="None",
-            bibliography="Book A",
-            course_units=[unit],
-        )
-        self.assertEqual(syllabus.term_id, "2025Z")
-        self.assertEqual(len(syllabus.course_units), 1)
-        self.assertEqual(syllabus.course_units[0].unit_id, 123)
-
         # Invalid term_id format
         with self.assertRaises(ValidationError):
-            CourseSyllabus(
+            CourseInfo(
                 course_id="CS101",
                 name="Intro to CS",
                 term_id="invalid_term",
@@ -98,15 +92,17 @@ class TestCoursesUtils(unittest.TestCase):
         # Mock the edition response
         mock_response_ed = MagicMock()
         mock_response_ed.json.return_value = {
-            "passing_status": "passed",
-            "course": {
-                "id": "CS101",
-                "name": {"en": "Intro to CS"},
-                "ects_credits_simplified": 6.0,
-                "assessment_criteria": {"en": "Written exam"},
-            }
+            "passing_status": "passed"
         }
-        mock_session.get.return_value = mock_response_ed
+        # Mock the course response
+        mock_response_c = MagicMock()
+        mock_response_c.json.return_value = {
+            "id": "CS101",
+            "name": {"en": "Intro to CS"},
+            "ects_credits_simplified": 6.0,
+            "assessment_criteria": {"en": "Written exam"},
+        }
+        mock_session.get.side_effect = [mock_response_ed, mock_response_c]
 
         res = fetch_course_basic_info("CS101", "2025Z")
         self.assertEqual(res["course_id"], "CS101")
@@ -121,21 +117,19 @@ class TestCoursesUtils(unittest.TestCase):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
 
-        # Mock course_edition2 to fail, and course2 to succeed
+        # Mock course_edition to fail, and course to succeed
         mock_response_ed = MagicMock()
         mock_response_ed.json.side_effect = Exception("Not found")
         
-        mock_response_c2 = MagicMock()
-        mock_response_c2.json.return_value = {
-            "CS101": {
-                "id": "CS101",
-                "name": {"en": "Intro to CS"},
-                "ects_credits_simplified": 5.0,
-                "assessment_criteria": {"en": "Project"},
-            }
+        mock_response_c = MagicMock()
+        mock_response_c.json.return_value = {
+            "id": "CS101",
+            "name": {"en": "Intro to CS"},
+            "ects_credits_simplified": 5.0,
+            "assessment_criteria": {"en": "Project"},
         }
 
-        mock_session.get.side_effect = [mock_response_ed, mock_response_c2]
+        mock_session.get.side_effect = [mock_response_ed, mock_response_c]
 
         res = fetch_course_basic_info("CS101", "2025Z")
         self.assertEqual(res["course_id"], "CS101")
@@ -149,7 +143,7 @@ class TestCoursesUtils(unittest.TestCase):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
 
-        # Mock course2 returning empty dict
+        # Mock course returning empty dict
         mock_response = MagicMock()
         mock_response.json.return_value = {}
         mock_session.get.return_value = mock_response
@@ -164,24 +158,25 @@ class TestCoursesUtils(unittest.TestCase):
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
 
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
+        mock_response_ed = MagicMock()
+        mock_response_ed.json.return_value = {
             "course_id": "CS101",
             "course_name": {"en": "Intro to CS"},
             "term_id": "2025Z",
             "description": {"en": "Learn to code"},
             "bibliography": {"en": "Some book"},
-            "course_units": [
-                {
-                    "id": 444,
-                    "classtype_id": "w",
-                    "topics": {"en": "Loops"},
-                    "learning_outcomes": {"en": "Learn loops"},
-                    "assessment_criteria": {"en": "Quiz"},
-                }
-            ]
+            "course_units_ids": [444],
         }
-        mock_session.get.return_value = mock_response
+
+        mock_response_unit = MagicMock()
+        mock_response_unit.json.return_value = {
+            "id": 444,
+            "classtype_id": "w",
+            "topics": {"en": "Loops"},
+            "learning_outcomes": {"en": "Learn loops"},
+            "assessment_criteria": {"en": "Quiz"},
+        }
+        mock_session.get.side_effect = [mock_response_ed, mock_response_unit]
 
         res = fetch_syllabus_details("CS101", "2025Z")
         self.assertEqual(res["course_id"], "CS101")
@@ -212,7 +207,9 @@ class TestCoursesTools(unittest.IsolatedAsyncioTestCase):
 
     @patch("usos.courses.tools.resolve_term_id")
     @patch("usos.courses.tools.fetch_course_basic_info")
-    async def test_get_course_tool_success(self, mock_fetch_info, mock_resolve_term):
+    @patch("usos.courses.tools.fetch_syllabus_details")
+    @patch("usos.courses.tools.fetch_classtypes_index")
+    async def test_get_course_info_success(self, mock_fetch_classtypes, mock_fetch_syllabus, mock_fetch_info, mock_resolve_term):
         mock_resolve_term.return_value = "2025Z"
         mock_fetch_info.return_value = {
             "course_id": "CS101",
@@ -221,25 +218,6 @@ class TestCoursesTools(unittest.IsolatedAsyncioTestCase):
             "assessment_criteria": "Exam",
             "passing_status": "passed",
         }
-
-        res = await get_course("CS101", "2025Z", ctx=self.mock_ctx)
-        self.assertEqual(res["course_id"], "CS101")
-        self.assertEqual(res["passing_status"], "passed")
-        mock_resolve_term.assert_called_once_with("2025Z")
-
-    @patch("usos.courses.tools.resolve_term_id")
-    @patch("usos.courses.tools.fetch_course_basic_info")
-    async def test_get_course_tool_error(self, mock_fetch_info, mock_resolve_term):
-        mock_resolve_term.side_effect = Exception("API error")
-
-        with self.assertRaises(ToolError):
-            await get_course("CS101", "2025Z", ctx=self.mock_ctx)
-
-    @patch("usos.courses.tools.resolve_term_id")
-    @patch("usos.courses.tools.fetch_syllabus_details")
-    @patch("usos.courses.tools.fetch_classtypes_index")
-    async def test_get_syllabus_tool_success(self, mock_fetch_classtypes, mock_fetch_syllabus, mock_resolve_term):
-        mock_resolve_term.return_value = "2025Z"
         mock_fetch_syllabus.return_value = {
             "course_id": "CS101",
             "name": "Intro to CS",
@@ -261,13 +239,23 @@ class TestCoursesTools(unittest.IsolatedAsyncioTestCase):
             "w": {"name": {"en": "Lecture", "pl": "Wykład"}}
         }
 
-        res = await get_syllabus("CS101", "2025Z", ctx=self.mock_ctx)
+        res = await get_course_info("CS101", "2025Z", ctx=self.mock_ctx)
         self.assertEqual(res["course_id"], "CS101")
         self.assertEqual(res["term_id"], "2025Z")
+        self.assertEqual(res["passing_status"], "passed")
+        self.assertEqual(res["ects_credits"], 5.0)
+        self.assertEqual(res["description"], "Learn to code")
         self.assertEqual(len(res["course_units"]), 1)
         unit = res["course_units"][0]
         self.assertEqual(unit["unit_id"], 444)
         self.assertEqual(unit["class_type_name"], "Lecture")
+
+    @patch("usos.courses.tools.resolve_term_id")
+    async def test_get_course_info_error(self, mock_resolve_term):
+        mock_resolve_term.side_effect = Exception("API error")
+
+        with self.assertRaises(ToolError):
+            await get_course_info("CS101", "2025Z", ctx=self.mock_ctx)
 
     @patch("usos.courses.tools.fetch_student_exams")
     async def test_get_exams_tool_success(self, mock_fetch_exams):
@@ -276,7 +264,6 @@ class TestCoursesTools(unittest.IsolatedAsyncioTestCase):
                 "id": "exam_99",
                 "course": {"id": "CS101", "name": {"en": "Intro to CS"}},
                 "term": {"id": "2025Z"},
-                "examination_session_id": "session_1",
                 "groups": [
                     {
                         "number": 2,
@@ -288,7 +275,7 @@ class TestCoursesTools(unittest.IsolatedAsyncioTestCase):
             }
         ]
 
-        res = await get_exams(ctx=self.mock_ctx)
+        res = await get_exams(include_past=True, ctx=self.mock_ctx)
         self.assertEqual(len(res), 1)
         exam = res[0]
         self.assertEqual(exam["exam_id"], "exam_99")
@@ -301,6 +288,44 @@ class TestCoursesTools(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(grp["exam_start"], "2026-06-15 09:00:00")
         self.assertEqual(grp["exam_end"], "2026-06-15 12:00:00")
         self.assertEqual(grp["capacity"], 50)
+
+    @patch("usos.courses.tools.fetch_student_exams")
+    async def test_get_exams_tool_filter_past(self, mock_fetch_exams):
+        mock_fetch_exams.return_value = [
+            {
+                "id": "exam_past",
+                "course": {"id": "CS101", "name": {"en": "Intro to CS"}},
+                "term": {"id": "2025Z"},
+                "groups": [
+                    {
+                        "number": 1,
+                        "exam_start": "2025-06-15 09:00:00",
+                        "exam_end": "2025-06-15 12:00:00",
+                        "capacity": 50,
+                    }
+                ]
+            },
+            {
+                "id": "exam_future",
+                "course": {"id": "CS101", "name": {"en": "Intro to CS"}},
+                "term": {"id": "2025Z"},
+                "groups": [
+                    {
+                        "number": 2,
+                        "exam_start": "2027-06-15 09:00:00",
+                        "exam_end": "2027-06-15 12:00:00",
+                        "capacity": 50,
+                    }
+                ]
+            }
+        ]
+
+        res_upcoming = await get_exams(include_past=False, ctx=self.mock_ctx)
+        self.assertEqual(len(res_upcoming), 1)
+        self.assertEqual(res_upcoming[0]["exam_id"], "exam_future")
+
+        res_all = await get_exams(include_past=True, ctx=self.mock_ctx)
+        self.assertEqual(len(res_all), 2)
 
     @patch("usos.courses.utils.fetch_classtypes_index")
     def test_resolve_classtypes_success(self, mock_fetch_classtypes):

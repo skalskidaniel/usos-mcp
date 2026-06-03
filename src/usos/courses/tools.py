@@ -6,8 +6,7 @@ from fastmcp.exceptions import ToolError
 
 from usos.utils import resolve_term_id, extract_localized_str, fetch_classtypes_index
 from .models import (
-    CourseBasicInfo,
-    CourseSyllabus,
+    CourseInfo,
     StudentExam,
     CourseUnitInfo,
     ExamGroupDetails,
@@ -20,46 +19,25 @@ from .utils import (
 
 
 @tool(
-    name="get_course",
-    description="Fetch general details about a course (ECTS points, method of passing, assessment criteria).",
+    name="get_course_info",
+    description="Fetch comprehensive details about a course edition (ECTS credits, passing status, description, bibliography, assessment criteria, and course units).",
     tags={"courses"},
     annotations={"readOnlyHint": True, "idempotentHint": True},
     timeout=30,
 )
-async def get_course(
+async def get_course_info(
     course_id: str,
     term_id: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
     try:
-        await ctx.info(f"Fetching course information for: {course_id}")
+        from usos.utils import resolve_course_and_term
+        course_id, term_id = await asyncio.to_thread(resolve_course_and_term, course_id, term_id)
         resolved_term = await asyncio.to_thread(resolve_term_id, term_id)
-        raw_info = await asyncio.to_thread(
-            fetch_course_basic_info, course_id, resolved_term
-        )
-        return CourseBasicInfo(**raw_info).model_dump()
-    except Exception as exc:
-        await ctx.error(f"Failed to fetch course: {exc}")
-        raise ToolError(f"Failed to fetch course: {exc}") from exc
+        await ctx.info(f"Fetching course info for {course_id} in {resolved_term}")
 
-
-@tool(
-    name="get_syllabus",
-    description="Fetch full syllabus details of a course edition: description, bibliography, and course units with class types.",
-    tags={"courses"},
-    annotations={"readOnlyHint": True, "idempotentHint": True},
-    timeout=30,
-)
-async def get_syllabus(
-    course_id: str,
-    term_id: str | None = None,
-    ctx: Context = CurrentContext(),
-) -> dict:
-    try:
-        resolved_term = await asyncio.to_thread(resolve_term_id, term_id)
-        await ctx.info(f"Fetching syllabus for {course_id} in {resolved_term}")
-
-        raw_syllabus, classtypes = await asyncio.gather(
+        raw_info, raw_syllabus, classtypes = await asyncio.gather(
+            asyncio.to_thread(fetch_course_basic_info, course_id, resolved_term),
             asyncio.to_thread(fetch_syllabus_details, course_id, resolved_term),
             asyncio.to_thread(fetch_classtypes_index),
         )
@@ -91,32 +69,41 @@ async def get_syllabus(
                 )
             )
 
-        syllabus = CourseSyllabus(
-            course_id=raw_syllabus.get("course_id") or course_id,
-            name=raw_syllabus.get("name") or "unknown",
+        course_info = CourseInfo(
+            course_id=course_id,
+            name=raw_info.get("name") or raw_syllabus.get("name") or "unknown",
             term_id=resolved_term,
+            ects_credits=raw_info.get("ects_credits"),
+            passing_status=raw_info.get("passing_status"),
             description=raw_syllabus.get("description"),
             prerequisites=raw_syllabus.get("prerequisites"),
             bibliography=raw_syllabus.get("bibliography"),
+            assessment_criteria=raw_info.get("assessment_criteria") or raw_syllabus.get("assessment_criteria"),
             course_units=resolved_units,
         )
-        return syllabus.model_dump()
+        return course_info.model_dump()
     except Exception as exc:
-        await ctx.error(f"Failed to fetch syllabus: {exc}")
-        raise ToolError(f"Failed to fetch syllabus: {exc}") from exc
+        await ctx.error(f"Failed to fetch course info: {exc}")
+        raise ToolError(f"Failed to fetch course info: {exc}") from exc
 
 
 @tool(
     name="get_exams",
-    description="Check scheduled exam dates and groups for the authenticated student.",
+    description="Check scheduled exam dates and groups for the authenticated student. Defaults to upcoming exams only.",
     tags={"courses"},
     annotations={"readOnlyHint": True, "idempotentHint": True},
     timeout=30,
 )
-async def get_exams(ctx: Context = CurrentContext()) -> list[dict]:
+async def get_exams(
+    include_past: bool = False,
+    ctx: Context = CurrentContext(),
+) -> list[dict]:
     try:
         await ctx.info("Fetching student exam calendar.")
         raw_exams = await asyncio.to_thread(fetch_student_exams)
+
+        from datetime import datetime
+        now = datetime.now()
 
         exams = []
         for exam in raw_exams:
@@ -126,6 +113,15 @@ async def get_exams(ctx: Context = CurrentContext()) -> list[dict]:
             groups_details = []
             for grp in exam.get("groups", []):
                 if "exam_start" in grp and "exam_end" in grp:
+                    exam_start_str = grp["exam_start"]
+                    if not include_past:
+                        try:
+                            start_dt = datetime.strptime(exam_start_str, "%Y-%m-%d %H:%M:%S")
+                            if start_dt < now:
+                                continue
+                        except Exception:
+                            pass
+
                     groups_details.append(
                         ExamGroupDetails(
                             group_number=grp.get("number") or 1,
@@ -135,6 +131,9 @@ async def get_exams(ctx: Context = CurrentContext()) -> list[dict]:
                         )
                     )
 
+            if not groups_details and not include_past:
+                continue
+
             term_id = term.get("id") or "0000Z"
 
             exams.append(
@@ -143,7 +142,6 @@ async def get_exams(ctx: Context = CurrentContext()) -> list[dict]:
                     course_id=course.get("id") or "unknown",
                     course_name=extract_localized_str(course.get("name")) or "unknown",
                     term_id=term_id,
-                    examination_session_id=exam.get("examination_session_id"),
                     groups=groups_details,
                 ).model_dump()
             )

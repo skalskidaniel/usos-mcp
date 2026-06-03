@@ -18,8 +18,6 @@ from requests.exceptions import (
 from usos.auth.models import USOSAuthSettings
 from usos.auth.utils import get_authenticated_session
 
-RETRIABLE_STATUS_CODES = {429, 500, 502, 503, 504}
-
 
 def _get_base_url() -> str:
     settings = USOSAuthSettings()
@@ -75,19 +73,18 @@ def _get_with_retries(
             return response
         except HTTPError as exc:
             status_code = exc.response.status_code if exc.response is not None else None
-            if status_code not in RETRIABLE_STATUS_CODES:
+            if status_code == 400 and exc.response is not None:
+                try:
+                    err_json = exc.response.json()
+                    err_msg = err_json.get("message") or err_json.get("error")
+                    if err_msg:
+                        raise ValueError(f"USOS API Error: {err_msg}") from exc
+                except Exception as parse_err:
+                    if isinstance(parse_err, ValueError) and "USOS API Error" in str(parse_err):
+                        raise
+            is_5xx = isinstance(status_code, int) and 500 <= status_code < 600
+            if not is_5xx:
                 raise
-            last_error = exc
-            if attempt == attempts:
-                break
-            time.sleep(base_sleep_s * attempt)
-        except (
-            RequestsConnectionError,
-            ReadTimeout,
-            ConnectTimeout,
-            Timeout,
-            ChunkedEncodingError,
-        ) as exc:
             last_error = exc
             if attempt == attempts:
                 break
@@ -347,3 +344,33 @@ def fetch_classtypes_index() -> dict[str, Any]:
     if isinstance(data, dict):
         return data
     return {}
+
+
+def resolve_course_and_term(course_id: str, term_id: str | None = None) -> tuple[str, str | None]:
+    """If course_id is numeric (a unit ID), resolve it to the actual course_id and term_id.
+    Otherwise return it as-is.
+    """
+    cleaned = course_id.strip()
+    if cleaned.isdigit():
+        base_url = _get_base_url()
+        session = get_authenticated_session()
+        try:
+            response = _get_with_retries(
+                session.get,
+                f"{base_url}/services/courses/unit",
+                params={
+                    "unit_id": cleaned,
+                    "fields": "course_id|term_id",
+                    "format": "json",
+                },
+                timeout=20,
+                attempts=3,
+            )
+            data = response.json()
+            resolved_course = data.get("course_id")
+            resolved_term = data.get("term_id")
+            if resolved_course:
+                return resolved_course, term_id or resolved_term
+        except Exception:
+            pass
+    return course_id, term_id

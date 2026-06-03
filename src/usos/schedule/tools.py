@@ -23,7 +23,7 @@ from .utils import (
 
 @tool(
     name="get_schedule",
-    description="Fetch the authenticated student's timetable for a selected date window (1-7 days).",
+    description="Fetch the timetable for a student or lecturer for a selected date window (1-7 days). Defaults to the authenticated student if lecturer_id is omitted.",
     tags={"schedule"},
     annotations={
         "readOnlyHint": True,
@@ -36,22 +36,40 @@ from .utils import (
 async def get_schedule(
     start_date: str | None = None,
     days: int = 7,
+    lecturer_id: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
     try:
         resolved_start = start_date or today_str()
-        await ctx.info("Fetching student schedule.")
-        activities = await asyncio.to_thread(
-            fetch_student_schedule,
-            start=resolved_start,
-            days=days,
-        )
-        return {
-            "start_date": resolved_start,
-            "days": days,
-            "count": len(activities),
-            "activities": activities,
-        }
+        if lecturer_id:
+            await ctx.info(f"Fetching schedule for lecturer: {lecturer_id}")
+            from usos.lecturer.utils import fetch_lecturer_schedule
+            activities = await asyncio.to_thread(
+                fetch_lecturer_schedule,
+                lecturer_id=lecturer_id,
+                start=resolved_start,
+                days=days,
+            )
+            return {
+                "lecturer_id": lecturer_id,
+                "start_date": resolved_start,
+                "days": days,
+                "count": len(activities),
+                "activities": activities,
+            }
+        else:
+            await ctx.info("Fetching student schedule.")
+            activities = await asyncio.to_thread(
+                fetch_student_schedule,
+                start=resolved_start,
+                days=days,
+            )
+            return {
+                "start_date": resolved_start,
+                "days": days,
+                "count": len(activities),
+                "activities": activities,
+            }
     except Exception as exc:
         await ctx.error(f"Failed to fetch schedule: {exc}")
         raise ToolError(f"Failed to fetch schedule: {exc}") from exc

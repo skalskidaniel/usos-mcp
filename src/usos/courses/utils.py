@@ -7,9 +7,10 @@ from usos.utils import (
     fetch_classtypes_index,
 )
 
+from concurrent.futures import ThreadPoolExecutor
+
 COURSE_FIELDS = "id|name|ects_credits_simplified|assessment_criteria|description|bibliography"
-EDITION_FIELDS = "course_id|course_name|term_id|description|bibliography|passing_status|course_units[id|classtype_id|topics|learning_outcomes|assessment_criteria|teaching_methods]"
-EXAM_FIELDS = "id|examination_session_id|term[id]|course[id|name]|groups[exam_start|exam_end|capacity|number]"
+EXAM_FIELDS = "id|examination_session_id|term|course[id|name]|groups[exam_start|exam_end|capacity|number]"
 
 
 def fetch_course_basic_info(course_id: str, term_id: str | None = None) -> dict[str, Any]:
@@ -17,46 +18,39 @@ def fetch_course_basic_info(course_id: str, term_id: str | None = None) -> dict[
     base_url = _get_base_url()
     session = get_authenticated_session()
 
+    passing_status = None
     if term_id:
         try:
             response = _get_with_retries(
                 session.get,
-                f"{base_url}/services/courses/course_edition2",
+                f"{base_url}/services/courses/course_edition",
                 params={
                     "course_id": course_id,
                     "term_id": term_id,
-                    "fields": f"passing_status|course[{COURSE_FIELDS}]",
+                    "fields": "passing_status",
                     "format": "json",
                 },
                 timeout=20,
                 attempts=3,
             )
             data = response.json()
-            if isinstance(data, dict) and data.get("course"):
-                course_data = data.get("course") or {}
-                return {
-                    "course_id": course_id,
-                    "name": extract_localized_str(course_data.get("name")),
-                    "ects_credits": course_data.get("ects_credits_simplified"),
-                    "assessment_criteria": extract_localized_str(course_data.get("assessment_criteria")),
-                    "passing_status": data.get("passing_status"),
-                }
+            if isinstance(data, dict):
+                passing_status = data.get("passing_status")
         except Exception:
             pass
 
     response = _get_with_retries(
         session.get,
-        f"{base_url}/services/courses/course2",
+        f"{base_url}/services/courses/course",
         params={
-            "course_ids": course_id,
-            "fields": COURSE_FIELDS,
+            "course_id": course_id,
+            "fields": "id|name|ects_credits_simplified|assessment_criteria",
             "format": "json",
         },
         timeout=20,
         attempts=3,
     )
-    payload = response.json()
-    course_data = payload.get(course_id) if isinstance(payload, dict) else {}
+    course_data = response.json()
     if not course_data:
         raise ValueError(f"Course '{course_id}' not found.")
 
@@ -65,7 +59,7 @@ def fetch_course_basic_info(course_id: str, term_id: str | None = None) -> dict[
         "name": extract_localized_str(course_data.get("name")),
         "ects_credits": course_data.get("ects_credits_simplified"),
         "assessment_criteria": extract_localized_str(course_data.get("assessment_criteria")),
-        "passing_status": None,
+        "passing_status": passing_status,
     }
 
 
@@ -76,11 +70,11 @@ def fetch_syllabus_details(course_id: str, term_id: str) -> dict[str, Any]:
 
     response = _get_with_retries(
         session.get,
-        f"{base_url}/services/courses/course_edition2",
+        f"{base_url}/services/courses/course_edition",
         params={
             "course_id": course_id,
             "term_id": term_id,
-            "fields": EDITION_FIELDS,
+            "fields": "course_name|description|bibliography|course_units_ids",
             "format": "json",
         },
         timeout=20,
@@ -90,7 +84,27 @@ def fetch_syllabus_details(course_id: str, term_id: str) -> dict[str, Any]:
     if not data or not isinstance(data, dict) or "course_name" not in data:
         raise ValueError(f"Course edition '{course_id}' in term '{term_id}' not found.")
 
-    course_units = data.get("course_units") or []
+    unit_ids = data.get("course_units_ids") or []
+    course_units = []
+
+    if unit_ids:
+        def fetch_unit(unit_id):
+            resp = _get_with_retries(
+                session.get,
+                f"{base_url}/services/courses/unit",
+                params={
+                    "unit_id": unit_id,
+                    "fields": "id|classtype_id|topics|learning_outcomes|assessment_criteria",
+                    "format": "json",
+                },
+                timeout=20,
+                attempts=3,
+            )
+            return resp.json()
+
+        with ThreadPoolExecutor(max_workers=len(unit_ids)) as executor:
+            course_units = list(executor.map(fetch_unit, unit_ids))
+
     return {
         "course_id": course_id,
         "name": extract_localized_str(data.get("course_name")),

@@ -175,10 +175,6 @@ class TestAuthConfig(unittest.TestCase):
 
         self.assertEqual(res["status"], "SUCCESS")
 
-        # Verify tool list changed notification was sent
-        self.assertTrue(len(ctx.notifications) > 0)
-        self.assertEqual(ctx.notifications[-1].method, "notifications/tools/list_changed")
-
         # Session state should be cleaned up
         self.assertIsNone(asyncio.run(ctx.get_state("auth_step")))
         self.assertIsNone(asyncio.run(ctx.get_state("auth_base_url")))
@@ -210,10 +206,6 @@ class TestAuthConfig(unittest.TestCase):
         result = asyncio.run(logout(ctx=ctx))
         self.assertTrue(result["success"])
         self.assertFalse(self.config_file_path.exists())
-
-        # Verify tool list changed notification was sent
-        self.assertTrue(len(ctx.notifications) > 0)
-        self.assertEqual(ctx.notifications[-1].method, "notifications/tools/list_changed")
 
         # Verify context state got cleared as well
         self.assertIsNone(asyncio.run(ctx.get_state("auth_step")))

@@ -8,17 +8,18 @@ TT_DEFAULT_FIELDS = (
     "building_name|room_number|room_id|lecturer_ids|group_number|frequency"
 )
 
-def fetch_course_lecturers(course_id: str) -> dict[str, Any]:
-    """Fetch lecturers for a given course code via services/courses/course."""
+def fetch_course_lecturers(course_id: str, term_id: str) -> dict[str, Any]:
+    """Fetch lecturers for a given course edition via services/courses/course_edition."""
     base_url = _get_base_url()
     session = get_authenticated_session()
     
     response = _get_with_retries(
         session.get,
-        f"{base_url}/services/courses/course",
+        f"{base_url}/services/courses/course_edition",
         params={
             "course_id": course_id,
-            "fields": f"name|lecturers[{LECTURER_FIELDS}]",
+            "term_id": term_id,
+            "fields": "course_name|lecturers",
             "format": "json",
         },
         timeout=20,
@@ -36,6 +37,7 @@ def search_users(query: str, limit: int = 10) -> list[dict[str, Any]]:
         f"{base_url}/services/users/search2",
         params={
             "query": query,
+            "lang": "pl",
             "num": min(limit, 20),
             "format": "json",
         },
@@ -51,7 +53,7 @@ def fetch_lecturer_courses(lecturer_id: str | None) -> list[dict[str, Any]]:
     session = get_authenticated_session()
     
     params = {
-        "fields": "course_id|course_name|term_id|number|class_type_id",
+        "fields": "course_id|course_name|term_id|group_number|class_type_id",
         "format": "json",
     }
     if lecturer_id:
@@ -66,6 +68,9 @@ def fetch_lecturer_courses(lecturer_id: str | None) -> list[dict[str, Any]]:
     )
     
     data = response.json()
+    if isinstance(data, dict) and "groups" in data:
+        data = data["groups"]
+
     groups = []
     if isinstance(data, dict):
         for term_id, term_groups in data.items():

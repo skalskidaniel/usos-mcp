@@ -3,7 +3,12 @@ from fastmcp.dependencies import CurrentContext
 from fastmcp.server.context import Context
 from fastmcp.tools import tool
 from fastmcp.exceptions import ToolError
-from usos.utils import today_str, fetch_user_profile
+from usos.utils import (
+    today_str,
+    fetch_user_profile,
+    resolve_term_id,
+    extract_localized_str,
+)
 
 from .models import Lecturer, LecturerGroup
 from .utils import (
@@ -17,7 +22,7 @@ from .utils import (
 
 @tool(
     name="get_course_lecturers",
-    description="Check who teaches a given course (list of lecturers).",
+    description="Check who teaches a given course in a specific term (list of lecturers).",
     tags={"lecturer"},
     annotations={
         "readOnlyHint": True,
@@ -29,15 +34,20 @@ from .utils import (
 )
 async def get_course_lecturers(
     course_id: str,
+    term_id: str | None = None,
     ctx: Context = CurrentContext(),
 ) -> dict:
     try:
+        from usos.utils import resolve_course_and_term
+        course_id, term_id = await asyncio.to_thread(resolve_course_and_term, course_id, term_id)
         await ctx.info(f"Fetching lecturers for course: {course_id}")
-        data = await asyncio.to_thread(fetch_course_lecturers, course_id)
+        resolved_term = await asyncio.to_thread(resolve_term_id, term_id)
+        data = await asyncio.to_thread(fetch_course_lecturers, course_id, resolved_term)
         lecturers = [Lecturer(**lecturer) for lecturer in data.get("lecturers", [])]
         return {
             "course_id": course_id,
-            "course_name": data.get("name"),
+            "course_name": extract_localized_str(data.get("course_name")),
+            "term_id": resolved_term,
             "lecturers": lecturers,
         }
     except Exception as exc:
@@ -66,9 +76,9 @@ async def search_lecturer(
         await ctx.info(f"Searching for users matching: {query}")
         items = await asyncio.to_thread(search_users, query, limit)
         user_ids = [
-            item.get("user_id") or item.get("id")
+            item.get("user", {}).get("id") or item.get("user_id") or item.get("id")
             for item in items
-            if (item.get("user_id") or item.get("id"))
+            if (item.get("user", {}).get("id") or item.get("user_id") or item.get("id"))
         ]
 
         async def fetch_one(uid):
@@ -118,72 +128,32 @@ async def get_lecturer_courses(
         await ctx.info(f"Fetching courses for lecturer ID: {lecturer_id or 'self'}")
         raw_groups = await asyncio.to_thread(fetch_lecturer_courses, lecturer_id)
 
-        groups = []
+        seen = set()
+        courses = []
         for g in raw_groups:
-            group_num = g.get("number") or g.get("group_number")
-            try:
-                if group_num is not None:
-                    group_num = int(group_num)
-                    if group_num <= 0:
-                        group_num = None
-            except (ValueError, TypeError):
-                group_num = None
+            course_id = g.get("course_id")
+            class_type_id = g.get("class_type_id")
+            key = (course_id, class_type_id)
+            if key not in seen:
+                seen.add(key)
+                raw_name = g.get("course_name")
+                course_name = extract_localized_str(raw_name) if isinstance(raw_name, dict) else raw_name
 
-            mapped = LecturerGroup(
-                course_id=g.get("course_id"),
-                course_name=g.get("course_name"),
-                term_id=g.get("term_id"),
-                group_number=group_num,
-                class_type_id=g.get("class_type_id"),
-            )
-            groups.append(mapped)
+                mapped = LecturerGroup(
+                    course_id=course_id,
+                    course_name=course_name,
+                    class_type_id=class_type_id,
+                )
+                courses.append(mapped)
 
         return {
             "lecturer_id": lecturer_id or "self",
-            "courses_count": len(groups),
-            "courses": groups,
+            "courses_count": len(courses),
+            "courses": courses,
         }
     except Exception as exc:
         await ctx.error(f"Failed to fetch lecturer courses: {exc}")
         raise ToolError(f"Failed to fetch lecturer courses: {exc}") from exc
 
 
-@tool(
-    name="get_lecturer_schedule",
-    description="Fetch a specific lecturer's timetable for a given day (max 7 days).",
-    tags={"lecturer"},
-    annotations={
-        "readOnlyHint": True,
-        "openWorldHint": True,
-        "destructiveHint": False,
-        "idempotentHint": True,
-    },
-    timeout=30,
-)
-async def get_lecturer_schedule(
-    lecturer_id: str,
-    start_date: str | None = None,
-    days: int = 1,
-    ctx: Context = CurrentContext(),
-) -> dict:
-    try:
-        resolved_start = start_date or today_str()
-        await ctx.info(
-            f"Fetching timetable for lecturer {lecturer_id} starting from {resolved_start}"
-        )
-        activities = await asyncio.to_thread(
-            fetch_lecturer_schedule,
-            lecturer_id=lecturer_id,
-            start=resolved_start,
-            days=days,
-        )
-        return {
-            "lecturer_id": lecturer_id,
-            "start_date": resolved_start,
-            "days": days,
-            "count": len(activities),
-            "activities": activities,
-        }
-    except Exception as exc:
-        await ctx.error(f"Failed to fetch lecturer schedule: {exc}")
-        raise ToolError(f"Failed to fetch lecturer schedule: {exc}") from exc
+

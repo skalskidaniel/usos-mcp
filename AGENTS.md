@@ -21,7 +21,7 @@
 - `core.py`: Bootstraps `FastMCP` with a `FileSystemProvider` that scans `src/usos` for `@tool`, `@prompt`, and
   `@resource` decorators.
 - `models.py`: `ServerSettings` (pydantic-settings, `FAST_MCP_` prefix).
-- Domain packages (`auth/`, `schedule/`, `grades/`, `groups/`) each own their `tools.py`, `prompts.py`, `resources.py`,
+- Domain packages (`auth/`, `schedule/`, `grades/`, `groups/`, `courses/`, `lecturer/`) each own their `tools.py`, `prompts.py`, `resources.py`,
   `models.py`, `utils.py`.
 - `auth/` — OAuth 1.0a setup (`login`, `check_login`, `logout`), `authenticate_me` prompt,
   `usos://universities/supported` resource.
@@ -55,3 +55,4 @@
 ## Documentation references
 
 - [FastMCP](https://gofastmcp.com/llms.txt)
+- [USOS API](https://usosapps.put.poznan.pl/developers/api/)
