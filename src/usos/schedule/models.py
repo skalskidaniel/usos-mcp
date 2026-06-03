@@ -3,12 +3,6 @@ from datetime import date, datetime
 from pydantic import BaseModel, Field
 
 
-class MultipleFacultiesError(Exception):
-    def __init__(self, faculties: list[dict]) -> None:
-        self.faculties = faculties
-        super().__init__("Multiple faculties found. Pass faculty_id explicitly.")
-
-
 class Activity(BaseModel):
     type: str
     start_time: datetime
