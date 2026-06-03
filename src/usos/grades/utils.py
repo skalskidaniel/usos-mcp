@@ -1,7 +1,7 @@
 from typing import Any
 
 from usos.auth.utils import get_authenticated_session
-from usos.utils import _get_base_url, _get_with_retries, extract_localized_str
+from usos.utils import _get_base_url, _get_with_retries, extract_localized_str, _parse_bool
 
 TERMS_GRADE_FIELDS = (
     "value_symbol|passes|value_description|exam_id|exam_session_number|"
@@ -105,15 +105,6 @@ def fetch_user_ects_points() -> dict[str, Any]:
         return data
     return {}
 
-
-def _parse_bool(val: Any) -> bool:
-    if isinstance(val, bool):
-        return val
-    if isinstance(val, str):
-        return val.strip().upper() in ("T", "TRUE", "Y", "YES", "1")
-    if isinstance(val, (int, float)):
-        return bool(val)
-    return False
 
 
 def _add_candidate(grouped: dict, key: str, g: dict):
