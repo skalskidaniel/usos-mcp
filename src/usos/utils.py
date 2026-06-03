@@ -5,8 +5,13 @@ import time
 from typing import Any
 
 import requests
+<<<<<<< HEAD
 from requests import HTTPError
 from requests.exceptions import ChunkedEncodingError, RequestException
+=======
+from requests import HTTPError, RequestException
+from requests.exceptions import ChunkedEncodingError
+>>>>>>> feat/issue-5-groups
 from requests.exceptions import ConnectTimeout
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import ReadTimeout
@@ -190,6 +195,7 @@ def extract_localized_str(
     return None
 
 
+<<<<<<< HEAD
 def _parse_bool(val: Any) -> bool:
     if isinstance(val, bool):
         return val
@@ -202,6 +208,10 @@ def _parse_bool(val: Any) -> bool:
 
 class MultipleFacultiesError(Exception):
     def __init__(self, faculties: list[dict[str, Any]]) -> None:
+=======
+class MultipleFacultiesError(Exception):
+    def __init__(self, faculties: list[dict]) -> None:
+>>>>>>> feat/issue-5-groups
         self.faculties = faculties
         super().__init__("Multiple faculties found. Pass faculty_id explicitly.")
 
@@ -305,12 +315,37 @@ def resolve_faculty_id(faculty_id: str | None) -> str:
     )
 
 
+<<<<<<< HEAD
 def fetch_user_profile(user_id: str | None = None, fields: str = "id") -> dict[str, Any]:
     base_url = _get_base_url()
     session = get_authenticated_session()
     params = {"fields": fields, "format": "json"}
     if user_id:
         params["user_id"] = user_id
+=======
+def _parse_bool(val: Any) -> bool:
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        return val.strip().upper() in ("T", "TRUE", "Y", "YES", "1")
+    if isinstance(val, (int, float)):
+        return bool(val)
+    return False
+
+
+def fetch_user_profile(user_id: str | None = None, fields: str = "id") -> dict[str, Any]:
+    """Fetch user profile information from USOS API.
+
+    If user_id is None, fetches the profile of the currently authenticated user.
+    """
+    base_url = _get_base_url()
+    session = get_authenticated_session()
+
+    params = {"fields": fields, "format": "json"}
+    if user_id:
+        params["user_id"] = user_id
+
+>>>>>>> feat/issue-5-groups
     response = _get_with_retries(
         session.get,
         f"{base_url}/services/users/user",
@@ -323,6 +358,7 @@ def fetch_user_profile(user_id: str | None = None, fields: str = "id") -> dict[s
         return data
     return {}
 
+<<<<<<< HEAD
 
 def fetch_classtypes_index() -> dict[str, Any]:
     base_url = _get_base_url()
@@ -337,3 +373,5 @@ def fetch_classtypes_index() -> dict[str, Any]:
     if isinstance(data, dict):
         return data
     return {}
+=======
+>>>>>>> feat/issue-5-groups
