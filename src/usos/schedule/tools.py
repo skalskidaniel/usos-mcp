@@ -4,15 +4,19 @@ from fastmcp.dependencies import CurrentContext
 from fastmcp.server.context import Context
 from fastmcp.tools import tool
 from fastmcp.exceptions import ToolError
-from usos.utils import get_semester_date_range, resolve_term_id, today_str
+from usos.utils import (
+    get_semester_date_range,
+    resolve_term_id,
+    today_str,
+    resolve_faculty_id,
+    fetch_user_faculties,
+)
 
 
 from .models import CalendarEvent
 from .utils import (
     fetch_calendar_events,
-    fetch_user_faculties,
     fetch_student_schedule,
-    resolve_faculty_id,
     flatten_calendar_event,
 )
 
